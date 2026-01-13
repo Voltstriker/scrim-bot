@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+echo "Running commit message checks..."
+
+# Get the commit message
+commit="$(cat .git/COMMIT_EDITMSG)"
+# Define the conventional commit regex
+regex="^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?: .+$"
+
+
+# Check if the commit message matches the conventional commit format
+if ! echo "$commit" | grep -Pq "$regex"
+then
+    echo "❌ Failed to create commit. Your commit message does not follow the conventional commit format."
+    echo ""
+    echo "Available types are listed below. Scope is optional. Use ! after type to indicate breaking change."
+    echo ""
+    echo "Quick examples:"
+    echo " - feat: add email notifications on new direct messages"
+    echo " - feat(shopping cart): add the amazing button"
+    echo " - feat!: remove ticket list endpoint"
+    echo " - fix(api): handle empty message in request body"
+    echo " - chore(deps): bump some-package-name to version 2.0.0"
+    echo ""
+    echo "Commit types:"
+    echo " - build: Changes that affect the build system or external dependencies (example scopes: gulp, broccoli, npm)"
+    echo " - ci: Changes to CI configuration files and scripts (example scopes: Travis, Circle, BrowserStack, SauceLabs)"
+    echo " - chore: Changes which doesn't change source code or tests e.g. changes to the build process, auxiliary tools, libraries"
+    echo " - docs: Documentation only changes"
+    echo " - feat: A new feature"
+    echo " - fix: A bug fix"
+    echo " - perf: A code change that improves performance"
+    echo " - refactor: A code change that neither fixes a bug nor adds a feature"
+    echo " - revert: Revert a change previously introduced"
+    echo " - test: Adding missing tests or correcting existing tests"
+    echo
+
+    echo "Reminders"
+    echo " - Put newline before extended commit body"
+    echo " - More details at http://www.conventionalcommits.org"
+    echo ""
+    exit 1
+fi
