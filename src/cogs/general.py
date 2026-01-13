@@ -74,7 +74,11 @@ class General(commands.Cog, name="General"):
         context : discord.ext.commands.Context
             The context in which the command was invoked.
         """
-        embed = discord.Embed(title="Scrim Bot", description="**Scrim Bot** is a Discord Bot designed to assist competitive teams with organising and challenging other teams to practice scrims or matches.", color=discord.Color.blue())
+        embed = discord.Embed(
+            title="Scrim Bot",
+            description="**Scrim Bot** is a Discord Bot designed to assist competitive teams with organising and challenging other teams to practice scrims or matches.",
+            color=discord.Color.blue(),
+        )
         embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
         embed.add_field(name="Latency", value=f"{round(self.bot.latency * 1000)}ms", inline=True)
         embed.set_footer(text=f"Requested by {context.author.name}")

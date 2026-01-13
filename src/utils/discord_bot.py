@@ -111,7 +111,9 @@ class DiscordBot(commands.Bot):
         self.logger.info("Running on: %s %s (%s)", platform.system(), platform.release(), os.name)
         self.logger.info("Application directory: '%s'", self.app_dir)
         self.logger.info("discord.py API version: %s", discord.__version__)
-        self.logger.info("Connecting to Discord API as bot '%s' (%s)", self.user.name if self.user else "Unknown", self.user.id if self.user else "Unknown")
+        self.logger.info(
+            "Connecting to Discord API as bot '%s' (%s)", self.user.name if self.user else "Unknown", self.user.id if self.user else "Unknown"
+        )
 
         await self.load_cogs()
 
