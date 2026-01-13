@@ -15,11 +15,19 @@
 
 1. Download the latest release or clone this repository
 2. Register a Discord bot on the [developer portal](https://discord.com/developers/applications)
-3. Update the .env file with the necessary credentials
-4. Install the application requirements using the command: `python -m pip install -r requirements.txt`
-5. Launch the application using the command: `python bot.py`
+3. Copy `.env.example` to `.env` and update it with your Discord bot token
+4. Install the application and its dependencies using the command: `python -m pip install .`
+5. Launch the application using the command: `python src/bot.py`
 
 > **Note**: You may need to replace `python` with `py`, `python3`, `python3.11`, etc. depending on what Python versions you have installed on the machine.
+
+### Development Setup
+
+For development with additional tools (Black, Pylint, Pyright):
+
+1. Clone the repository
+2. Install with development dependencies: `python -m pip install -e .[dev]`
+3. Run the bot: `python src/bot.py`
 
 ## Issues or Questions
 
