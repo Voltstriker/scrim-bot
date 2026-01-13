@@ -1,2 +1,30 @@
-# scrim-bot
-Discord bot designed to assist teams with organising and challenging other competitive teams to scrims.
+# Scrim Bot
+
+<p align="center">
+    <a href="https://github.com/Voltstriker/scrim-bot/blob/main/LICENSE.md"><img alt="GitHub License" src="https://img.shields.io/github/license/Voltstriker/scrim-bot?style=for-the-badge"></a>
+    <a href="https://github.com/Voltstriker/scrim-bot/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/Voltstriker/scrim-bot?sort=semver&display_name=release&style=for-the-badge"></a>
+    <a href="https://github.com/Voltstriker/scrim-bot/actions"><img alt="GitHub branch check runs" src="https://img.shields.io/github/check-runs/Voltstriker/scrim-bot/main?style=for-the-badge"></a>
+    <a href="https://github.com/Voltstriker/scrim-bot/commits/main/"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/Voltstriker/scrim-bot/main?style=for-the-badge"></a>
+    <a href="https://github.com/Voltstriker/scrim-bot/issues"><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/Voltstriker/scrim-bot?style=for-the-badge"></a>
+    <img alt="Repository code style" src="https://img.shields.io/badge/code%20style-black-black?style=for-the-badge">
+</p>
+
+**Scrim Bot** is a Discord Bot designed to assist competitive teams with organising and challenging other teams to practice scrims or matches.
+
+## Installation
+
+1. Download the latest release or clone this repository
+2. Register a Discord bot on the [developer portal](https://discord.com/developers/applications)
+3. Update the .env file with the necessary credentials
+4. Install the application requirements using the command: `python -m pip install -r requirements.txt`
+5. Launch the application using the command: `python bot.py`
+
+> **Note**: You may need to replace `python` with `py`, `python3`, `python3.11`, etc. depending on what Python versions you have installed on the machine.
+
+## Issues or Questions
+
+If you have any issues or questions you can log an [issue](https://github.com/Voltstriker/scrim-bot/issues) on GitHub.
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE.md](LICENSE.md) file for details
