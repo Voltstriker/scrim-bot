@@ -24,7 +24,7 @@ install-dev: venv
 
 run:
 	@echo Running Scrim Bot...
-	@$(VENV_PY) src/main.py
+	@$(VENV_PY) src/bot.py
 
 clean:
 	@echo Removing virtual environment...
