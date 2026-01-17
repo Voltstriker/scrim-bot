@@ -505,16 +505,10 @@ class Database:
 
         This function creates the necessary tables for the bot to function.
         It should only be called when the database is first created.
-
-        TODO: Implement schema creation logic here.
-        Examples:
-        - Create tables for guilds, users, scrims, etc.
-        - Set up any indexes or constraints
-        - Insert default/seed data if needed
         """
         self.logger.info("Initialising database schema...")
 
-        # Create logs table
+        # Create logs table for database logging
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS logs (
@@ -526,6 +520,221 @@ class Database:
                 module TEXT,
                 function TEXT,
                 line_number INTEGER
+            )
+            """
+        )
+
+        # Create games table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS games (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                series TEXT
+            )
+            """
+        )
+
+        # Create maps table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS maps (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                mode TEXT,
+                game_id INTEGER,
+                FOREIGN KEY (game_id) REFERENCES games(id)
+            )
+            """
+        )
+
+        # Create match_formats table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS match_formats (
+                id INTEGER PRIMARY KEY,
+                max_players INTEGER,
+                match_count INTEGER,
+                map_list_id INTEGER
+            )
+            """
+        )
+
+        # Create permitted_maps table (composite primary key)
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS permitted_maps (
+                match_format_id INTEGER,
+                map_id INTEGER,
+                PRIMARY KEY (match_format_id, map_id),
+                FOREIGN KEY (match_format_id) REFERENCES match_formats(id),
+                FOREIGN KEY (map_id) REFERENCES maps(id)
+            )
+            """
+        )
+
+        # Create users table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                discord_id TEXT,
+                display_name TEXT,
+                created_date TIMESTAMP
+            )
+            """
+        )
+
+        # Create teams table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS teams (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                captain_id INTEGER,
+                created_at TIMESTAMP,
+                created_by INTEGER,
+                discord_server TEXT,
+                FOREIGN KEY (captain_id) REFERENCES users(id),
+                FOREIGN KEY (created_by) REFERENCES users(id)
+            )
+            """
+        )
+
+        # Create leagues table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS leagues (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                game_id INTEGER,
+                match_format INTEGER,
+                discord_server TEXT,
+                created_date TIMESTAMP,
+                created_by INTEGER,
+                updated_date TIMESTAMP,
+                updated_by INTEGER,
+                FOREIGN KEY (game_id) REFERENCES games(id),
+                FOREIGN KEY (match_format) REFERENCES match_formats(id),
+                FOREIGN KEY (created_by) REFERENCES users(id),
+                FOREIGN KEY (updated_by) REFERENCES users(id)
+            )
+            """
+        )
+
+        # Create team_membership table (composite primary key)
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS team_membership (
+                user_id INTEGER,
+                team_id INTEGER,
+                joined_date TIMESTAMP,
+                updated_date TIMESTAMP,
+                PRIMARY KEY (user_id, team_id),
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (team_id) REFERENCES teams(id)
+            )
+            """
+        )
+
+        # Create team_permissions_users table (composite primary key)
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS team_permissions_users (
+                team_id INTEGER,
+                user_id INTEGER,
+                perm_edit_details INTEGER,
+                perm_edit_members INTEGER,
+                perm_join_leagues INTEGER,
+                perm_issue_matches INTEGER,
+                created_date TIMESTAMP,
+                created_by INTEGER,
+                updated_date TIMESTAMP,
+                updated_by INTEGER,
+                PRIMARY KEY (team_id, user_id),
+                FOREIGN KEY (team_id) REFERENCES teams(id),
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (created_by) REFERENCES users(id),
+                FOREIGN KEY (updated_by) REFERENCES users(id)
+            )
+            """
+        )
+
+        # Create team_permissions_roles table (composite primary key)
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS team_permissions_roles (
+                team_id INTEGER,
+                role_id TEXT,
+                perm_edit_details INTEGER,
+                perm_edit_members INTEGER,
+                perm_join_leagues INTEGER,
+                perm_issue_matches INTEGER,
+                created_date TIMESTAMP,
+                created_by INTEGER,
+                updated_date TIMESTAMP,
+                updated_by INTEGER,
+                PRIMARY KEY (team_id, role_id),
+                FOREIGN KEY (team_id) REFERENCES teams(id),
+                FOREIGN KEY (created_by) REFERENCES users(id),
+                FOREIGN KEY (updated_by) REFERENCES users(id)
+            )
+            """
+        )
+
+        # Create league_membership table (composite primary key)
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS league_membership (
+                league_id INTEGER,
+                team_id INTEGER,
+                joined_date TIMESTAMP,
+                joined_by INTEGER,
+                PRIMARY KEY (league_id, team_id),
+                FOREIGN KEY (league_id) REFERENCES leagues(id),
+                FOREIGN KEY (team_id) REFERENCES teams(id),
+                FOREIGN KEY (joined_by) REFERENCES users(id)
+            )
+            """
+        )
+
+        # Create matches table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS matches (
+                id INTEGER PRIMARY KEY,
+                league_id INTEGER,
+                challenging_team INTEGER,
+                defending_team INTEGER,
+                issued_date TIMESTAMP,
+                issued_by INTEGER,
+                match_date TIMESTAMP,
+                winning_team INTEGER,
+                match_accepted INTEGER,
+                match_cancelled INTEGER,
+                FOREIGN KEY (league_id) REFERENCES leagues(id),
+                FOREIGN KEY (challenging_team) REFERENCES teams(id),
+                FOREIGN KEY (defending_team) REFERENCES teams(id),
+                FOREIGN KEY (winning_team) REFERENCES teams(id),
+                FOREIGN KEY (issued_by) REFERENCES users(id)
+            )
+            """
+        )
+
+        # Create match_results table (composite primary key)
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS match_results (
+                match_id INTEGER,
+                round INTEGER,
+                map_id INTEGER,
+                challenging_team_score INTEGER,
+                defending_team_score INTEGER,
+                winning_team INTEGER,
+                PRIMARY KEY (match_id, round),
+                FOREIGN KEY (match_id) REFERENCES matches(id),
+                FOREIGN KEY (map_id) REFERENCES maps(id),
+                FOREIGN KEY (winning_team) REFERENCES teams(id)
             )
             """
         )
