@@ -233,6 +233,42 @@ Always provide clear feedback to users:
 6. Check linting: Use the "Check Pylint Issues" task
 7. Test the bot with a test Discord server
 
+### Validation After Changes
+
+**IMPORTANT**: After making any code changes, always run the following validation checks:
+
+1. **Format the code** with Black:
+
+   ```bash
+   python -m black --verbose .
+   ```
+
+   Or use the VS Code task: "Run Black Formatting"
+
+2. **Check formatting compliance**:
+
+   ```bash
+   python -m black --check --verbose .
+   ```
+
+   Or use the VS Code task: "Check Black Formatting"
+
+3. **Check type annotations** with Pyright:
+
+   ```bash
+   python -m pyright
+   ```
+
+   Or use the VS Code task: "Check Pyright Types"
+
+4. **Check code quality** with Pylint:
+   ```bash
+   python -m pylint **/*.py
+   ```
+   Or use the VS Code task: "Check Pylint Issues"
+
+These checks ensure code quality, consistency, and adherence to project standards. Fix any issues reported before considering the changes complete.
+
 ## Maintaining These Instructions
 
 When making significant changes to the project that would benefit from additional context in these instructions, please:
