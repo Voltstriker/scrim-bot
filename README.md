@@ -29,6 +29,19 @@ For development with additional tools (Black, Pylint, Pyright):
 2. Install with development dependencies: `python -m pip install -e .[dev]`
 3. Run the bot: `python src/bot.py`
 
+## Bot Commands
+
+The following commands are available in the bot:
+
+| Command   | Parameters              | Scoped User | Description                                                            |
+| --------- | ----------------------- | ----------- | ---------------------------------------------------------------------- |
+| `/info`   | None                    | Bot Owner   | Display information about the bot including server count and latency   |
+| `/ping`   | None                    | Bot Owner   | Test the bot's responsiveness and display latency                      |
+| `/sync`   | `scope` (global\|guild) | Bot Owner   | Synchronise slash commands either globally or to the current guild     |
+| `/unsync` | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild |
+
+> **Note**: All commands currently require bot owner permissions. Additional team management and match commands will be added in future updates.
+
 ## Issues or Questions
 
 If you have any issues or questions you can log an [issue](https://github.com/Voltstriker/scrim-bot/issues) on GitHub.

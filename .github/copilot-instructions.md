@@ -347,6 +347,7 @@ When making significant changes to the project that would benefit from additiona
 
 - **Review this file** and suggest updates to keep it current
 - **Update the README.md** with any useful context or information that would help users understand new features
+- **Update the README.md commands table** whenever a new bot command is added to any file in the `src/cogs/` directory
 - **Add new sections** for major features, architectural patterns, or conventions
 - **Update examples** when implementation patterns change
 - **Document new tables/models** when extending the database schema
