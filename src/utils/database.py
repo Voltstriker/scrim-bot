@@ -38,7 +38,7 @@ class Database:
 
     def __init__(self, database_path: str | None = None, logger: logging.Logger | None = None) -> None:
         """
-        Initialize the database connection.
+        Initialise the database connection.
 
         Args:
             database_path: Path to the SQLite database file. If None, uses
@@ -61,7 +61,7 @@ class Database:
         self.connection: sqlite3.Connection | None = None
         self.cursor: sqlite3.Cursor | None = None
 
-        self.logger.info(f"Database initialized at: {self.database_path}")
+        self.logger.info(f"Database initialised at: {self.database_path}")
 
     @staticmethod
     def _validate_identifier(identifier: str, identifier_type: str = "identifier") -> str:
@@ -505,9 +505,9 @@ class Database:
         self.commit()
         self.logger.info(f"Table '{table_name}' dropped successfully")
 
-    def initialize_schema(self) -> None:
+    def initialise_schema(self) -> None:
         """
-        Initialize the database schema with all required tables.
+        Initialise the database schema with all required tables.
 
         This function creates the necessary tables for the bot to function.
         It should only be called when the database is first created.
@@ -518,7 +518,7 @@ class Database:
         - Set up any indexes or constraints
         - Insert default/seed data if needed
         """
-        self.logger.info("Initializing database schema...")
+        self.logger.info("Initialising database schema...")
 
         # TODO: Add your table creation logic here
         # Example:
@@ -531,4 +531,4 @@ class Database:
         # ''')
 
         self.commit()
-        self.logger.info("Database schema initialized successfully")
+        self.logger.info("Database schema initialised successfully")

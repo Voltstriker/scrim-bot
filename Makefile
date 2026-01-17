@@ -5,7 +5,7 @@ VENV_PY := $(VENV_DIR)\Scripts\python.exe
 .PHONY: venv install install-dev run clean enable-git-hooks init
 
 init:
-	@echo Initializing project...
+	@echo Initialising project...
 	@$(MAKE) enable-git-hooks
 	@$(MAKE) install-dev
 

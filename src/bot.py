@@ -16,18 +16,18 @@ logger = logging.LoggingFormatter.start_logging(
     log_path=os.getenv("LOG_PATH"),
 )
 
-# Check if database exists and initialize if needed
+# Check if database exists and initialise if needed
 db_path = os.getenv("DATABASE_PATH")
 if db_path:
     db_file = Path(db_path)
     db_exists = db_file.exists()
 
     if not db_exists:
-        logger.info(f"Database file not found at {db_path}. Creating and initializing...")
+        logger.info(f"Database file not found at {db_path}. Creating and initialising...")
         db = database.Database(database_path=db_path, logger=logger)
         with db:
-            db.initialize_schema()
-        logger.info("Database created and initialized successfully")
+            db.initialise_schema()
+        logger.info("Database created and initialised successfully")
     else:
         logger.info(f"Database file found at {db_path}")
 else:

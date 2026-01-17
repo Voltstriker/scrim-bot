@@ -56,7 +56,7 @@ class DiscordBot(commands.Bot):
     Methods
     -------
     __init__(logger, intents)
-        Initializes the DiscordBot instance.
+        Initialises the DiscordBot instance.
     status_task()
         Periodically updates the bot's status.
     before_status_task()
@@ -79,7 +79,7 @@ class DiscordBot(commands.Bot):
 
     def __init__(self, logger: logging.Logger, intents: discord.Intents) -> None:
         """
-        Initialize the DiscordBot instance.
+        Initialise the DiscordBot instance.
 
         Parameters
         ----------

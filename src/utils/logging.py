@@ -25,7 +25,7 @@ import os
 
 class LoggingFormatter(logging.Formatter):
     """
-    Custom logging formatter that applies ANSI color codes to log messages
+    Custom logging formatter that applies ANSI colour codes to log messages
     based on their severity level.
     """
 
@@ -59,7 +59,7 @@ class LoggingFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """
-        Format a log record with ANSI color codes.
+        Format a log record with ANSI colour codes.
 
         Parameters
         ----------
@@ -69,9 +69,9 @@ class LoggingFormatter(logging.Formatter):
         Returns
         -------
         str
-            The formatted log message with color codes.
+            The formatted log message with colour codes.
         """
-        # Fetch the color for the log level
+        # Fetch the colour for the log level
         log_color = self.log_formats.get(record.levelno, self.formats["reset"])
 
         # Format the log message

@@ -82,7 +82,7 @@ src/
 - **Location**: Configured via `DATABASE_PATH` environment variable
 - **Initialisation**: Automatic schema creation on first run if database doesn't exist
 - **Access**: Use the `Database` class from `utils.database`
-- **Schema**: Placeholder method `initialize_schema()` for table creation
+- **Schema**: Placeholder method `initialise_schema()` for table creation
 
 ### Logging
 
@@ -153,7 +153,7 @@ The `Database` class provides methods for:
 
 ## Data Model Considerations
 
-When implementing the schema in `initialize_schema()`, consider:
+When implementing the schema in `initialise_schema()`, consider:
 
 ### Teams Table
 
