@@ -69,11 +69,45 @@ src/
 ├── cogs/                  # Discord.py cogs (command modules)
 │   ├── general.py
 │   └── utils.py
+├── models/                # Data models (dataclasses)
+│   ├── __init__.py
+│   ├── user.py            # User model
+│   ├── game.py            # Game, Map, MatchFormat models
+│   ├── team.py            # Team and team-related models
+│   ├── league.py          # League models
+│   └── match.py           # Match and match result models
 └── utils/                 # Utility modules
     ├── __init__.py
     ├── database.py        # Database operations
     ├── discord_bot.py     # Bot class and configuration
     └── logging.py         # Logging configuration
+```
+
+### Data Models
+
+- **Location**: `src/models/` directory
+- **Pattern**: Use Python dataclasses for all database entities
+- **Type Hints**: All fields must have type annotations (use `Optional` for nullable fields)
+- **Conversion Method**: Each model must have a `from_row()` classmethod for database row conversion
+- **Docstrings**: NumPy-style documentation for all models and methods
+- **Boolean Handling**: Convert SQLite INTEGER (0/1) to Python bool using `bool(row['field'])`
+- **Imports**: Models are exported through `models/__init__.py` for clean imports
+
+Example model structure:
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class Team:
+    id: int
+    name: str
+    captain_id: int
+
+    @classmethod
+    def from_row(cls, row) -> 'Team':
+        return cls(id=row['id'], name=row['name'], captain_id=row['captain_id'])
 ```
 
 ### Database
@@ -82,7 +116,27 @@ src/
 - **Location**: Configured via `DATABASE_PATH` environment variable
 - **Initialisation**: Automatic schema creation on first run if database doesn't exist
 - **Access**: Use the `Database` class from `utils.database`
-- **Schema**: Placeholder method `initialise_schema()` for table creation
+- **Schema**: Fully implemented in `initialise_schema()` method
+- **Models**: Use dataclasses from `models/` for type-safe data access
+
+### Database Schema
+
+The database includes the following tables:
+
+- **logs**: Database logging (timestamp, level, logger_name, message)
+- **games**: Video games (name, series)
+- **maps**: Game maps (name, mode, game_id)
+- **match_formats**: Match configurations (max_players, match_count, map_list_id)
+- **permitted_maps**: Maps allowed per match format (composite key: match_format_id, map_id)
+- **users**: Discord users (discord_id, display_name, created_date)
+- **teams**: Competitive teams (name, captain_id, discord_server, created_at)
+- **leagues**: Competition leagues (name, game_id, match_format, discord_server)
+- **team_membership**: User-team relationships (composite key: user_id, team_id)
+- **team_permissions_users**: User-specific team permissions
+- **team_permissions_roles**: Role-based team permissions
+- **league_membership**: Team-league relationships (composite key: league_id, team_id)
+- **matches**: Match challenges (league_id, challenging_team, defending_team, match_date)
+- **match_results**: Round results (composite key: match_id, round)
 
 ### Logging
 
@@ -90,6 +144,7 @@ src/
 - Log level configured via `LOG_LEVEL` environment variable
 - Log path configured via `LOG_PATH` environment variable
 - Logger instance passed to all major components
+- **Database Logging**: Logs are written to the database `logs` table (added after schema initialisation)
 
 ### Environment Variables
 
@@ -153,41 +208,38 @@ The `Database` class provides methods for:
 
 ## Data Model Considerations
 
-When implementing the schema in `initialise_schema()`, consider:
+The database schema is fully implemented. When working with database entities:
 
-### Teams Table
+### Using Models
 
-- Primary key (team ID)
-- Team name (full)
-- Team tag/shorthand
-- Game being played
-- League affiliation
-- Creation timestamp
+- Import models from `models` package: `from models import Team, User, Match`
+- Use `Model.from_row(row)` to convert database rows to typed objects
+- Models provide type safety, autocomplete, and clear structure
+- All models use dataclasses with full type annotations
 
-### Team Members Table
+### Discord IDs
 
-- Link between teams and Discord users
-- Discord user ID
-- Team ID (foreign key)
-- Role (captain vs. regular member)
-- Join date
+- Store Discord IDs (user IDs, server IDs, role IDs) as TEXT type
+- Discord snowflake IDs can be large (18-19 digits), TEXT handles them safely
+- Examples: `"178397727892176897"`, `"1407935391876648981"`
 
-### Matches/Scrims Table
+### Boolean Fields
 
-- Match ID
-- Challenging team (foreign key)
-- Challenged team (foreign key)
-- Proposed time
-- Status (pending, accepted, declined, completed)
-- Alternative time suggestions
-- League ID
+- SQLite stores booleans as INTEGER (0/1)
+- Convert to Python bool in models: `bool(row['field_name'])`
+- Used in: team permissions, match_cancelled
 
-### Leagues Table
+### Timestamps
 
-- League ID
-- League name
-- Game
-- Settings/rules
+- Use SQLite TIMESTAMP type for all date/time fields
+- Convert to Python datetime objects in models
+- Common timestamp fields: created_date, updated_date, joined_date
+
+### Foreign Keys
+
+- All relationships use foreign key constraints
+- Enforces referential integrity at database level
+- Common patterns: user_id → users(id), team_id → teams(id)
 
 ## Security Considerations
 
@@ -206,6 +258,26 @@ When implementing new commands:
 4. Ensure Australian English in all user-facing messages
 
 ## Common Patterns
+
+### Working with Models and Database
+
+```python
+from utils import database
+from models import Team, User
+
+# Fetch and convert to model
+with database.Database(database_path=db_path, logger=logger) as db:
+    row = db.select_one("teams", where="id = ?", parameters=(team_id,))
+    if row:
+        team = Team.from_row(row)
+        # Now you have a typed object with autocomplete
+        print(f"Team: {team.name}, Captain: {team.captain_id}")
+
+# Fetch multiple rows
+with database.Database(database_path=db_path, logger=logger) as db:
+    rows = db.select("teams", where="discord_server = ?", parameters=(server_id,))
+    teams = [Team.from_row(row) for row in rows]
+```
 
 ### Checking Team Captain Status
 
@@ -290,6 +362,7 @@ Examples of changes that should prompt an update:
 - Adding new environment variables or configuration options
 - Changing code style conventions or tooling configurations
 - New features or functionality that users should know about
+- Adding or modifying data models in the `models/` directory
 
 ## Additional Notes
 
