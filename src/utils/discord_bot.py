@@ -98,7 +98,6 @@ class DiscordBot(commands.Bot):
         self.bot_prefix = os.getenv("COMMAND_PREFIX", "!")
         self.user_name = os.getenv("BOT_NAME", "Scrim Bot")
         self.app_dir = Path(os.path.dirname(os.path.abspath(__file__))).parent
-        print(self.app_dir)
 
     async def setup_hook(self) -> None:
         """

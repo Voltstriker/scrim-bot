@@ -12,12 +12,12 @@ from pathlib import Path
 import discord
 from dotenv import load_dotenv
 
-from .utils import database, discord_bot, logging
+from utils import database, discord_bot, logging
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Set up logging
+# Set up logging (without database handler initially)
 logger = logging.LoggingFormatter.start_logging(
     log_name="scrim_bot",
     log_level=os.getenv("LOG_LEVEL", "INFO"),
@@ -28,15 +28,29 @@ logger = logging.LoggingFormatter.start_logging(
 db_path = os.getenv("DATABASE_PATH")
 if db_path:
     db_file = Path(db_path)
+    needs_initialisation = False
 
     if not db_file.exists():
         logger.info("Database file not found at %s. Creating and initialising...", db_path)
+        needs_initialisation = True
+    else:
+        logger.info("Database file found at %s", db_path)
+        # Check if the schema has been initialised by verifying logs table exists
+        db = database.Database(database_path=db_path, logger=logger)
+        with db:
+            if not db.table_exists("logs"):
+                logger.warning("Database file exists but schema not initialised. Initialising schema...")
+                needs_initialisation = True
+
+    # Initialise schema if needed
+    if needs_initialisation:
         db = database.Database(database_path=db_path, logger=logger)
         with db:
             db.initialise_schema()
-        logger.info("Database created and initialised successfully")
-    else:
-        logger.info("Database file found at %s", db_path)
+
+    # Now that database exists with schema, add database logging handler
+    logging.add_database_handler(logger, db_path)
+    logger.debug("Database logging handler enabled")
 else:
     logger.error("DATABASE_PATH not set in environment variables")
     raise ValueError("Missing DATABASE_PATH in environment variables.")

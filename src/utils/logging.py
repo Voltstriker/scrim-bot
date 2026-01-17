@@ -21,6 +21,8 @@ handlers for console and file output.
 
 import logging
 import os
+import sqlite3
+from datetime import datetime
 
 
 class LoggingFormatter(logging.Formatter):
@@ -91,7 +93,7 @@ class LoggingFormatter(logging.Formatter):
     @staticmethod
     def start_logging(log_name: str = "discord_bot", log_level: str = "INFO", log_path: str | None = None) -> logging.Logger:
         """
-        Sets up logging with a console handler and a file handler.
+        Sets up logging with a console handler and file handler.
 
         Parameters
         ----------
@@ -130,3 +132,92 @@ class LoggingFormatter(logging.Formatter):
         logger.addHandler(file_handler)
 
         return logger
+
+
+def add_database_handler(logger: logging.Logger, database_path: str) -> None:
+    """
+    Add a database logging handler to an existing logger.
+
+    This function should be called after the database schema has been initialised
+    to avoid errors when trying to write to a non-existent logs table.
+
+    Parameters
+    ----------
+    logger : logging.Logger
+        The logger instance to add the database handler to.
+    database_path : str
+        Path to the SQLite database file where logs will be stored.
+    """
+    db_handler = DatabaseHandler(database_path)
+    db_formatter = logging.Formatter("{message}", style="{")
+    db_handler.setFormatter(db_formatter)
+    logger.addHandler(db_handler)
+
+
+class DatabaseHandler(logging.Handler):
+    """
+    Custom logging handler that writes log records to a SQLite database.
+
+    This handler stores log messages in a database table for persistent
+    logging and analysis.
+    """
+
+    def __init__(self, database_path: str) -> None:
+        """
+        Initialise the database logging handler.
+
+        Parameters
+        ----------
+        database_path : str
+            Path to the SQLite database file where logs will be stored.
+        """
+        super().__init__()
+        self.database_path = database_path
+        self.connection: sqlite3.Connection | None = None
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """
+        Emit a log record to the database.
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            The log record to write to the database.
+        """
+        try:
+            # Connect to database if not already connected
+            if self.connection is None:
+                self.connection = sqlite3.connect(self.database_path, check_same_thread=False)
+
+            cursor = self.connection.cursor()
+
+            # Insert log record into the logs table
+            cursor.execute(
+                """
+                INSERT INTO logs (timestamp, level, logger_name, message, module, function, line_number)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    datetime.fromtimestamp(record.created).strftime("%Y-%m-%d %H:%M:%S"),
+                    record.levelname,
+                    record.name,
+                    self.format(record),
+                    record.module,
+                    record.funcName,
+                    record.lineno,
+                ),
+            )
+
+            self.connection.commit()
+        except Exception:
+            # Silently fail to avoid recursion if logging the error causes another error
+            self.handleError(record)
+
+    def close(self) -> None:
+        """
+        Close the database connection when the handler is closed.
+        """
+        if self.connection:
+            self.connection.close()
+            self.connection = None
+        super().close()

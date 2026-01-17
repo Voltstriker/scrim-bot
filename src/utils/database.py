@@ -61,7 +61,7 @@ class Database:
         self.connection: sqlite3.Connection | None = None
         self.cursor: sqlite3.Cursor | None = None
 
-        self.logger.info("Database initialised at: %s", self.database_path)
+        self.logger.debug("Database initialised at: %s", self.database_path)
 
     @staticmethod
     def _validate_identifier(identifier: str, identifier_type: str = "identifier") -> str:
@@ -514,15 +514,21 @@ class Database:
         """
         self.logger.info("Initialising database schema...")
 
-        # TODO: Add your table creation logic here
-        # Example:
-        # self.execute('''
-        #     CREATE TABLE IF NOT EXISTS guilds (
-        #         guild_id INTEGER PRIMARY KEY,
-        #         guild_name TEXT NOT NULL,
-        #         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        #     )
-        # ''')
+        # Create logs table
+        self.execute(
+            """
+            CREATE TABLE IF NOT EXISTS logs (
+                log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                level TEXT NOT NULL,
+                logger_name TEXT NOT NULL,
+                message TEXT NOT NULL,
+                module TEXT,
+                function TEXT,
+                line_number INTEGER
+            )
+            """
+        )
 
         self.commit()
         self.logger.info("Database schema initialised successfully")
