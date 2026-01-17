@@ -1,0 +1,506 @@
+# Copyright 2025 Voltstriker
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Database utility for Discord Bot.
+
+This module provides a database class for performing CRUD operations
+on a local SQLite database.
+"""
+
+import logging
+import os
+import re
+import sqlite3
+from pathlib import Path
+from typing import Any
+
+
+class Database:
+    """
+    SQLite database manager for performing CRUD operations.
+
+    This class provides a simple interface for interacting with a SQLite
+    database, including creating tables, inserting, updating, deleting,
+    and querying data.
+    """
+
+    def __init__(self, database_path: str | None = None, logger: logging.Logger | None = None) -> None:
+        """
+        Initialize the database connection.
+
+        Args:
+            database_path: Path to the SQLite database file. If None, uses
+                          DATABASE_PATH environment variable.
+            logger: Logger instance for logging operations. If None, uses
+                   default logger.
+        """
+        self.logger = logger or logging.getLogger(__name__)
+        db_path = database_path or os.getenv("DATABASE_PATH")
+
+        if not db_path:
+            raise ValueError("Database path must be provided either as parameter or in DATABASE_PATH environment variable")
+
+        self.database_path: str = db_path
+
+        # Ensure the directory exists
+        db_file = Path(self.database_path)
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+
+        self.connection: sqlite3.Connection | None = None
+        self.cursor: sqlite3.Cursor | None = None
+
+        self.logger.info(f"Database initialized at: {self.database_path}")
+
+    @staticmethod
+    def _validate_identifier(identifier: str, identifier_type: str = "identifier") -> str:
+        """
+        Validate and sanitize SQL identifiers (table names, column names).
+
+        This method prevents SQL injection by ensuring identifiers only contain
+        safe characters and are properly quoted.
+
+        Args:
+            identifier: The identifier to validate (table name, column name, etc.)
+            identifier_type: Type of identifier for error messages (e.g., "table name")
+
+        Returns:
+            The validated and quoted identifier.
+
+        Raises:
+            ValueError: If the identifier contains invalid characters.
+        """
+        if not identifier:
+            raise ValueError(f"Invalid {identifier_type}: identifier cannot be empty")
+
+        # Allow alphanumeric, underscore, and spaces (will be quoted)
+        # Reject anything that could be SQL injection
+        if not re.match(r'^[a-zA-Z0-9_][a-zA-Z0-9_ ]*$', identifier):
+            raise ValueError(
+                f"Invalid {identifier_type} '{identifier}': must contain only "
+                f"alphanumeric characters, underscores, and spaces"
+            )
+
+        # Check for reasonable length (SQLite limit is 1024 bytes for identifiers)
+        if len(identifier) > 128:
+            raise ValueError(f"Invalid {identifier_type}: identifier too long (max 128 characters)")
+
+        # Quote the identifier to prevent injection and allow spaces
+        # Use double quotes as per SQLite standard for identifiers
+        return f'"{identifier}"'
+
+    @staticmethod
+    def _validate_order_by(order_by: str) -> str:
+        """
+        Validate ORDER BY clause to prevent SQL injection.
+
+        Args:
+            order_by: The ORDER BY clause to validate.
+
+        Returns:
+            The validated ORDER BY clause.
+
+        Raises:
+            ValueError: If the clause contains suspicious content.
+        """
+        # Allow only safe characters: alphanumeric, underscore, comma, space, ASC, DESC
+        if not re.match(r'^[a-zA-Z0-9_,\s]+$', order_by):
+            raise ValueError(
+                f"Invalid ORDER BY clause '{order_by}': must contain only "
+                f"column names, commas, spaces, and ASC/DESC"
+            )
+
+        # Check for SQL keywords that shouldn't be in ORDER BY
+        dangerous_keywords = ['DROP', 'DELETE', 'INSERT', 'UPDATE', 'CREATE', 'ALTER', 'EXEC', '--', '/*', ';']
+        order_by_upper = order_by.upper()
+        for keyword in dangerous_keywords:
+            if keyword in order_by_upper:
+                raise ValueError(f"Invalid ORDER BY clause: contains forbidden keyword '{keyword}'")
+
+        return order_by
+
+    def connect(self) -> None:
+        """
+        Establish connection to the database.
+
+        This method creates a connection to the SQLite database and sets up
+        a cursor for executing queries.
+        """
+        try:
+            self.connection = sqlite3.connect(self.database_path)
+            self.connection.row_factory = sqlite3.Row  # Enable column access by name
+            self.cursor = self.connection.cursor()
+            self.logger.debug(f"Connected to database: {self.database_path}")
+        except sqlite3.Error as ex:
+            self.logger.error(f"Failed to connect to database: {ex}")
+            raise
+
+    def disconnect(self) -> None:
+        """
+        Close the database connection.
+
+        This method commits any pending transactions and closes the database
+        connection.
+        """
+        if self.connection:
+            try:
+                self.connection.commit()
+                self.connection.close()
+                self.connection = None
+                self.cursor = None
+                self.logger.debug("Disconnected from database")
+            except sqlite3.Error as ex:
+                self.logger.error(f"Error disconnecting from database: {ex}")
+                raise
+
+    def __enter__(self):
+        """Context manager entry."""
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.disconnect()
+
+    def execute(self, query: str, parameters: tuple | dict | None = None) -> sqlite3.Cursor | None:
+        """
+        Execute a SQL query.
+
+        Args:
+            query: SQL query string to execute.
+            parameters: Parameters to substitute in the query. Can be a tuple
+                       for positional parameters or dict for named parameters.
+
+        Returns:
+            Cursor object with query results, or None if connection not established.
+        """
+        if not self.cursor:
+            self.logger.error("Database cursor not available. Call connect() first.")
+            return None
+
+        try:
+            if parameters:
+                self.cursor.execute(query, parameters)
+            else:
+                self.cursor.execute(query)
+            self.logger.debug(f"Executed query: {query}")
+            return self.cursor
+        except sqlite3.Error as ex:
+            self.logger.error(f"Error executing query: {ex}")
+            self.logger.error(f"Query: {query}")
+            raise
+
+    def commit(self) -> None:
+        """
+        Commit the current transaction.
+
+        This method saves all changes made since the last commit.
+        """
+        if self.connection:
+            try:
+                self.connection.commit()
+                self.logger.debug("Transaction committed")
+            except sqlite3.Error as ex:
+                self.logger.error(f"Error committing transaction: {ex}")
+                raise
+
+    def rollback(self) -> None:
+        """
+        Roll back the current transaction.
+
+        This method discards all changes made since the last commit.
+        """
+        if self.connection:
+            try:
+                self.connection.rollback()
+                self.logger.debug("Transaction rolled back")
+            except sqlite3.Error as ex:
+                self.logger.error(f"Error rolling back transaction: {ex}")
+                raise
+
+    def create_table(self, table_name: str, columns: dict[str, str], if_not_exists: bool = True) -> None:
+        """
+        Create a new table in the database.
+
+        Args:
+            table_name: Name of the table to create.
+            columns: Dictionary mapping column names to their SQL type definitions.
+                    Example: {"id": "INTEGER PRIMARY KEY", "name": "TEXT NOT NULL"}
+            if_not_exists: If True, only creates table if it doesn't exist.
+        """
+        # Validate table name
+        validated_table = self._validate_identifier(table_name, "table name")
+
+        # Validate column names and build column definitions
+        validated_columns = []
+        for col, dtype in columns.items():
+            validated_col = self._validate_identifier(col, "column name")
+            validated_columns.append(f"{validated_col} {dtype}")
+
+        if_not_exists_clause = "IF NOT EXISTS " if if_not_exists else ""
+        column_definitions = ", ".join(validated_columns)
+        query = f"CREATE TABLE {if_not_exists_clause}{validated_table} ({column_definitions})"
+
+        self.execute(query)
+        self.commit()
+        self.logger.info(f"Table '{table_name}' created successfully")
+
+    def insert(self, table_name: str, data: dict[str, Any]) -> int | None:
+        """
+        Insert a new row into the table.
+
+        Args:
+            table_name: Name of the table to insert into.
+            data: Dictionary mapping column names to values.
+
+        Returns:
+            The row ID of the newly inserted row, or None if insert failed.
+        """
+        # Validate table name and column names
+        validated_table = self._validate_identifier(table_name, "table name")
+        validated_columns = [self._validate_identifier(col, "column name") for col in data.keys()]
+
+        columns = ", ".join(validated_columns)
+        placeholders = ", ".join(["?" for _ in data])
+        query = f"INSERT INTO {validated_table} ({columns}) VALUES ({placeholders})"
+
+        self.execute(query, tuple(data.values()))
+        self.commit()
+
+        last_row_id = self.cursor.lastrowid if self.cursor else None
+        self.logger.debug(f"Inserted row with ID {last_row_id} into '{table_name}'")
+        return last_row_id
+
+    def insert_many(self, table_name: str, data_list: list[dict[str, Any]]) -> None:
+        """
+        Insert multiple rows into the table.
+
+        Args:
+            table_name: Name of the table to insert into.
+            data_list: List of dictionaries, each mapping column names to values.
+        """
+        if not data_list:
+            self.logger.warning("No data provided for insert_many operation")
+            return
+
+        # Validate table name and column names
+        validated_table = self._validate_identifier(table_name, "table name")
+        validated_columns = [self._validate_identifier(col, "column name") for col in data_list[0].keys()]
+
+        columns = ", ".join(validated_columns)
+        placeholders = ", ".join(["?" for _ in data_list[0]])
+        query = f"INSERT INTO {validated_table} ({columns}) VALUES ({placeholders})"
+
+        if self.cursor:
+            try:
+                self.cursor.executemany(query, [tuple(data.values()) for data in data_list])
+                self.commit()
+                self.logger.debug(f"Inserted {len(data_list)} rows into '{table_name}'")
+            except sqlite3.Error as ex:
+                self.logger.error(f"Error inserting multiple rows: {ex}")
+                raise
+
+    def select(
+        self,
+        table_name: str,
+        columns: list[str] | None = None,
+        where: str | None = None,
+        parameters: tuple | dict | None = None,
+        order_by: str | None = None,
+        limit: int | None = None,
+    ) -> list[sqlite3.Row]:
+        """
+        Select rows from the table.
+
+        Args:
+            table_name: Name of the table to select from.
+            columns: List of column names to select. If None, selects all columns.
+            where: WHERE clause (without the WHERE keyword). Example: "age > ?"
+            parameters: Parameters to substitute in the WHERE clause.
+            order_by: ORDER BY clause (without the ORDER BY keyword). Example: "name ASC"
+            limit: Maximum number of rows to return.
+
+        Returns:
+            List of Row objects containing the query results.
+        """
+        # Validate table name
+        validated_table = self._validate_identifier(table_name, "table name")
+
+        # Validate column names if provided
+        if columns:
+            validated_columns = [self._validate_identifier(col, "column name") for col in columns]
+            column_str = ", ".join(validated_columns)
+        else:
+            column_str = "*"
+
+        query = f"SELECT {column_str} FROM {validated_table}"
+
+        if where:
+            query += f" WHERE {where}"
+        if order_by:
+            validated_order = self._validate_order_by(order_by)
+            query += f" ORDER BY {validated_order}"
+        if limit:
+            query += f" LIMIT {limit}"
+
+        cursor = self.execute(query, parameters)
+        if cursor:
+            results = cursor.fetchall()
+            self.logger.debug(f"Selected {len(results)} rows from '{table_name}'")
+            return results
+        return []
+
+    def select_one(
+        self,
+        table_name: str,
+        columns: list[str] | None = None,
+        where: str | None = None,
+        parameters: tuple | dict | None = None,
+    ) -> sqlite3.Row | None:
+        """
+        Select a single row from the table.
+
+        Args:
+            table_name: Name of the table to select from.
+            columns: List of column names to select. If None, selects all columns.
+            where: WHERE clause (without the WHERE keyword).
+            parameters: Parameters to substitute in the WHERE clause.
+
+        Returns:
+            Row object containing the query result, or None if no row found.
+        """
+        results = self.select(table_name, columns, where, parameters, limit=1)
+        return results[0] if results else None
+
+    def update(
+        self,
+        table_name: str,
+        data: dict[str, Any],
+        where: str,
+        parameters: tuple | dict | None = None,
+    ) -> int:
+        """
+        Update rows in the table.
+
+        Args:
+            table_name: Name of the table to update.
+            data: Dictionary mapping column names to new values.
+            where: WHERE clause (without the WHERE keyword) specifying which rows to update.
+            parameters: Parameters to substitute in the WHERE clause.
+
+        Returns:
+            Number of rows affected by the update.
+        """
+        # Validate table name and column names
+        validated_table = self._validate_identifier(table_name, "table name")
+        validated_columns = [self._validate_identifier(col, "column name") for col in data.keys()]
+
+        set_clause = ", ".join([f"{validated_col} = ?" for validated_col in validated_columns])
+        query = f"UPDATE {validated_table} SET {set_clause} WHERE {where}"
+
+        # Combine data values and where parameters
+        if parameters:
+            if isinstance(parameters, dict):
+                all_params = {**data, **parameters}
+            else:
+                all_params = tuple(data.values()) + parameters
+        else:
+            all_params = tuple(data.values())
+
+        cursor = self.execute(query, all_params)
+        self.commit()
+
+        rows_affected = cursor.rowcount if cursor else 0
+        self.logger.debug(f"Updated {rows_affected} rows in '{table_name}'")
+        return rows_affected
+
+    def delete(
+        self,
+        table_name: str,
+        where: str,
+        parameters: tuple | dict | None = None,
+    ) -> int:
+        """
+        Delete rows from the table.
+
+        Args:
+            table_name: Name of the table to delete from.
+            where: WHERE clause (without the WHERE keyword) specifying which rows to delete.
+            parameters: Parameters to substitute in the WHERE clause.
+
+        Returns:
+            Number of rows affected by the delete.
+        """
+        # Validate table name
+        validated_table = self._validate_identifier(table_name, "table name")
+        query = f"DELETE FROM {validated_table} WHERE {where}"
+
+        cursor = self.execute(query, parameters)
+        self.commit()
+
+        rows_affected = cursor.rowcount if cursor else 0
+        self.logger.debug(f"Deleted {rows_affected} rows from '{table_name}'")
+        return rows_affected
+
+    def table_exists(self, table_name: str) -> bool:
+        """
+        Check if a table exists in the database.
+
+        Args:
+            table_name: Name of the table to check.
+
+        Returns:
+            True if the table exists, False otherwise.
+        """
+        query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?"
+        cursor = self.execute(query, (table_name,))
+        if cursor:
+            result = cursor.fetchone()
+            return result is not None
+        return False
+
+    def get_table_info(self, table_name: str) -> list[sqlite3.Row]:
+        """
+        Get information about a table's structure.
+
+        Args:
+            table_name: Name of the table to get information about.
+
+        Returns:
+            List of Row objects containing column information (cid, name, type, etc.).
+        """
+        # Validate table name
+        validated_table = self._validate_identifier(table_name, "table name")
+        query = f"PRAGMA table_info({validated_table})"
+        cursor = self.execute(query)
+        if cursor:
+            return cursor.fetchall()
+        return []
+
+    def drop_table(self, table_name: str, if_exists: bool = True) -> None:
+        """
+        Drop (delete) a table from the database.
+
+        Args:
+            table_name: Name of the table to drop.
+            if_exists: If True, only drops table if it exists (no error if it doesn't).
+        """
+        # Validate table name
+        validated_table = self._validate_identifier(table_name, "table name")
+        if_exists_clause = "IF EXISTS " if if_exists else ""
+        query = f"DROP TABLE {if_exists_clause}{validated_table}"
+
+        self.execute(query)
+        self.commit()
+        self.logger.info(f"Table '{table_name}' dropped successfully")
