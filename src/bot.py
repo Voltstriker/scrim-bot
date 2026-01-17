@@ -1,9 +1,10 @@
 import os
+from pathlib import Path
 
 import discord
 from dotenv import load_dotenv
 
-from utils import discord_bot, logging
+from utils import database, discord_bot, logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -14,6 +15,24 @@ logger = logging.LoggingFormatter.start_logging(
     log_level=os.getenv("LOG_LEVEL", "INFO"),
     log_path=os.getenv("LOG_PATH"),
 )
+
+# Check if database exists and initialize if needed
+db_path = os.getenv("DATABASE_PATH")
+if db_path:
+    db_file = Path(db_path)
+    db_exists = db_file.exists()
+
+    if not db_exists:
+        logger.info(f"Database file not found at {db_path}. Creating and initializing...")
+        db = database.Database(database_path=db_path, logger=logger)
+        with db:
+            db.initialize_schema()
+        logger.info("Database created and initialized successfully")
+    else:
+        logger.info(f"Database file found at {db_path}")
+else:
+    logger.error("DATABASE_PATH not set in environment variables")
+    raise ValueError("Missing DATABASE_PATH in environment variables.")
 
 # Create bot instance
 intents = discord.Intents.all()

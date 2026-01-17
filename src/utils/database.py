@@ -504,3 +504,31 @@ class Database:
         self.execute(query)
         self.commit()
         self.logger.info(f"Table '{table_name}' dropped successfully")
+
+    def initialize_schema(self) -> None:
+        """
+        Initialize the database schema with all required tables.
+
+        This function creates the necessary tables for the bot to function.
+        It should only be called when the database is first created.
+
+        TODO: Implement schema creation logic here.
+        Examples:
+        - Create tables for guilds, users, scrims, etc.
+        - Set up any indexes or constraints
+        - Insert default/seed data if needed
+        """
+        self.logger.info("Initializing database schema...")
+
+        # TODO: Add your table creation logic here
+        # Example:
+        # self.execute('''
+        #     CREATE TABLE IF NOT EXISTS guilds (
+        #         guild_id INTEGER PRIMARY KEY,
+        #         guild_name TEXT NOT NULL,
+        #         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        #     )
+        # ''')
+
+        self.commit()
+        self.logger.info("Database schema initialized successfully")
