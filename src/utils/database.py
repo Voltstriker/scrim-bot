@@ -86,11 +86,8 @@ class Database:
 
         # Allow alphanumeric, underscore, and spaces (will be quoted)
         # Reject anything that could be SQL injection
-        if not re.match(r'^[a-zA-Z0-9_][a-zA-Z0-9_ ]*$', identifier):
-            raise ValueError(
-                f"Invalid {identifier_type} '{identifier}': must contain only "
-                f"alphanumeric characters, underscores, and spaces"
-            )
+        if not re.match(r"^[a-zA-Z0-9_][a-zA-Z0-9_ ]*$", identifier):
+            raise ValueError(f"Invalid {identifier_type} '{identifier}': must contain only " f"alphanumeric characters, underscores, and spaces")
 
         # Check for reasonable length (SQLite limit is 1024 bytes for identifiers)
         if len(identifier) > 128:
@@ -115,14 +112,11 @@ class Database:
             ValueError: If the clause contains suspicious content.
         """
         # Allow only safe characters: alphanumeric, underscore, comma, space, ASC, DESC
-        if not re.match(r'^[a-zA-Z0-9_,\s]+$', order_by):
-            raise ValueError(
-                f"Invalid ORDER BY clause '{order_by}': must contain only "
-                f"column names, commas, spaces, and ASC/DESC"
-            )
+        if not re.match(r"^[a-zA-Z0-9_,\s]+$", order_by):
+            raise ValueError(f"Invalid ORDER BY clause '{order_by}': must contain only " f"column names, commas, spaces, and ASC/DESC")
 
         # Check for SQL keywords that shouldn't be in ORDER BY
-        dangerous_keywords = ['DROP', 'DELETE', 'INSERT', 'UPDATE', 'CREATE', 'ALTER', 'EXEC', '--', '/*', ';']
+        dangerous_keywords = ["DROP", "DELETE", "INSERT", "UPDATE", "CREATE", "ALTER", "EXEC", "--", "/*", ";"]
         order_by_upper = order_by.upper()
         for keyword in dangerous_keywords:
             if keyword in order_by_upper:
