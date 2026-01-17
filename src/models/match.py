@@ -38,7 +38,7 @@ class Match:
         When the match was issued.
     issued_by : int
         Foreign key to the user who issued the match.
-    match_date : datetime, optional
+    match_date : datetime
         Scheduled date/time for the match.
     winning_team : int, optional
         Foreign key to the team that won the match.
@@ -54,7 +54,7 @@ class Match:
     defending_team: int
     issued_date: datetime
     issued_by: int
-    match_date: Optional[datetime] = None
+    match_date: datetime
     winning_team: Optional[int] = None
     match_accepted: bool = False
     match_cancelled: bool = False
@@ -81,7 +81,7 @@ class Match:
             defending_team=row["defending_team"],
             issued_date=row["issued_date"],
             issued_by=row["issued_by"],
-            match_date=row.get("match_date"),
+            match_date=row["match_date"],
             winning_team=row.get("winning_team"),
             match_accepted=bool(row.get("match_accepted", 0)),
             match_cancelled=bool(row.get("match_cancelled", 0)),
@@ -105,7 +105,7 @@ class MatchResult:
         Score for the challenging team.
     defending_team_score : int
         Score for the defending team.
-    winning_team : int, optional
+    winning_team : int
         Foreign key to the team that won this round.
     """
 
@@ -114,7 +114,7 @@ class MatchResult:
     map_id: int
     challenging_team_score: int
     defending_team_score: int
-    winning_team: Optional[int] = None
+    winning_team: int
 
     @classmethod
     def from_row(cls, row) -> "MatchResult":
@@ -137,5 +137,5 @@ class MatchResult:
             map_id=row["map_id"],
             challenging_team_score=row["challenging_team_score"],
             defending_team_score=row["defending_team_score"],
-            winning_team=row.get("winning_team"),
+            winning_team=row["winning_team"],
         )

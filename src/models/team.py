@@ -30,6 +30,8 @@ class Team:
         Unique team identifier.
     name : str
         Team name.
+    tag : str
+        Team tag/shorthand name.
     captain_id : int
         Foreign key to the user who is team captain.
     created_at : datetime
@@ -42,6 +44,7 @@ class Team:
 
     id: int
     name: str
+    tag: str
     captain_id: int
     created_at: datetime
     created_by: int
@@ -65,6 +68,7 @@ class Team:
         return cls(
             id=row["id"],
             name=row["name"],
+            tag=row["tag"],
             captain_id=row["captain_id"],
             created_at=row["created_at"],
             created_by=row["created_by"],

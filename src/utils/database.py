@@ -528,8 +528,8 @@ class Database:
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS games (
-                id INTEGER PRIMARY KEY,
-                name TEXT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
                 series TEXT
             )
             """
@@ -539,10 +539,10 @@ class Database:
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS maps (
-                id INTEGER PRIMARY KEY,
-                name TEXT,
-                mode TEXT,
-                game_id INTEGER,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                game_id INTEGER NOT NULL,
                 FOREIGN KEY (game_id) REFERENCES games(id)
             )
             """
@@ -552,10 +552,9 @@ class Database:
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS match_formats (
-                id INTEGER PRIMARY KEY,
-                max_players INTEGER,
-                match_count INTEGER,
-                map_list_id INTEGER
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                max_players INTEGER NOT NULL,
+                match_count INTEGER NOT NULL
             )
             """
         )
@@ -577,10 +576,10 @@ class Database:
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                discord_id TEXT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                discord_id TEXT NOT NULL,
                 display_name TEXT,
-                created_date TIMESTAMP
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
@@ -589,12 +588,13 @@ class Database:
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS teams (
-                id INTEGER PRIMARY KEY,
-                name TEXT,
-                captain_id INTEGER,
-                created_at TIMESTAMP,
-                created_by INTEGER,
-                discord_server TEXT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                tag TEXT NOT NULL,
+                captain_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER NOT NULL,
+                discord_server TEXT NOT NULL,
                 FOREIGN KEY (captain_id) REFERENCES users(id),
                 FOREIGN KEY (created_by) REFERENCES users(id)
             )
@@ -605,13 +605,13 @@ class Database:
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS leagues (
-                id INTEGER PRIMARY KEY,
-                name TEXT,
-                game_id INTEGER,
-                match_format INTEGER,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                game_id INTEGER NOT NULL,
+                match_format INTEGER NOT NULL,
                 discord_server TEXT,
-                created_date TIMESTAMP,
-                created_by INTEGER,
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER NOT NULL,
                 updated_date TIMESTAMP,
                 updated_by INTEGER,
                 FOREIGN KEY (game_id) REFERENCES games(id),
@@ -628,7 +628,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS team_membership (
                 user_id INTEGER,
                 team_id INTEGER,
-                joined_date TIMESTAMP,
+                joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_date TIMESTAMP,
                 PRIMARY KEY (user_id, team_id),
                 FOREIGN KEY (user_id) REFERENCES users(id),
@@ -643,12 +643,12 @@ class Database:
             CREATE TABLE IF NOT EXISTS team_permissions_users (
                 team_id INTEGER,
                 user_id INTEGER,
-                perm_edit_details INTEGER,
-                perm_edit_members INTEGER,
-                perm_join_leagues INTEGER,
-                perm_issue_matches INTEGER,
-                created_date TIMESTAMP,
-                created_by INTEGER,
+                perm_edit_details INTEGER DEFAULT 0,
+                perm_edit_members INTEGER DEFAULT 0,
+                perm_join_leagues INTEGER DEFAULT 0,
+                perm_issue_matches INTEGER DEFAULT 0,
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER NOT NULL,
                 updated_date TIMESTAMP,
                 updated_by INTEGER,
                 PRIMARY KEY (team_id, user_id),
@@ -665,13 +665,13 @@ class Database:
             """
             CREATE TABLE IF NOT EXISTS team_permissions_roles (
                 team_id INTEGER,
-                role_id TEXT,
-                perm_edit_details INTEGER,
-                perm_edit_members INTEGER,
-                perm_join_leagues INTEGER,
-                perm_issue_matches INTEGER,
-                created_date TIMESTAMP,
-                created_by INTEGER,
+                role_id TEXT NOT NULL,
+                perm_edit_details INTEGER DEFAULT 0,
+                perm_edit_members INTEGER DEFAULT 0,
+                perm_join_leagues INTEGER DEFAULT 0,
+                perm_issue_matches INTEGER DEFAULT 0,
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER NOT NULL,
                 updated_date TIMESTAMP,
                 updated_by INTEGER,
                 PRIMARY KEY (team_id, role_id),
@@ -688,8 +688,8 @@ class Database:
             CREATE TABLE IF NOT EXISTS league_membership (
                 league_id INTEGER,
                 team_id INTEGER,
-                joined_date TIMESTAMP,
-                joined_by INTEGER,
+                joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                joined_by INTEGER NOT NULL,
                 PRIMARY KEY (league_id, team_id),
                 FOREIGN KEY (league_id) REFERENCES leagues(id),
                 FOREIGN KEY (team_id) REFERENCES teams(id),
@@ -702,16 +702,16 @@ class Database:
         self.execute(
             """
             CREATE TABLE IF NOT EXISTS matches (
-                id INTEGER PRIMARY KEY,
-                league_id INTEGER,
-                challenging_team INTEGER,
-                defending_team INTEGER,
-                issued_date TIMESTAMP,
-                issued_by INTEGER,
-                match_date TIMESTAMP,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                league_id INTEGER NOT NULL,
+                challenging_team INTEGER NOT NULL,
+                defending_team INTEGER NOT NULL,
+                issued_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                issued_by INTEGER NOT NULL,
+                match_date TIMESTAMP NOT NULL,
                 winning_team INTEGER,
-                match_accepted INTEGER,
-                match_cancelled INTEGER,
+                match_accepted INTEGER DEFAULT 0,
+                match_cancelled INTEGER DEFAULT 0,
                 FOREIGN KEY (league_id) REFERENCES leagues(id),
                 FOREIGN KEY (challenging_team) REFERENCES teams(id),
                 FOREIGN KEY (defending_team) REFERENCES teams(id),
@@ -727,10 +727,10 @@ class Database:
             CREATE TABLE IF NOT EXISTS match_results (
                 match_id INTEGER,
                 round INTEGER,
-                map_id INTEGER,
-                challenging_team_score INTEGER,
-                defending_team_score INTEGER,
-                winning_team INTEGER,
+                map_id INTEGER NOT NULL,
+                challenging_team_score INTEGER NOT NULL,
+                defending_team_score INTEGER NOT NULL,
+                winning_team INTEGER NOT NULL,
                 PRIMARY KEY (match_id, round),
                 FOREIGN KEY (match_id) REFERENCES matches(id),
                 FOREIGN KEY (map_id) REFERENCES maps(id),

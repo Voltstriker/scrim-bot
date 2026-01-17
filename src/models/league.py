@@ -34,7 +34,7 @@ class League:
         Foreign key to the game being played.
     match_format : int
         Foreign key to the match format configuration.
-    discord_server : str
+    discord_server : str, optional
         Discord server ID where the league is hosted.
     created_date : datetime
         When the league was created.
@@ -50,7 +50,7 @@ class League:
     name: str
     game_id: int
     match_format: int
-    discord_server: str
+    discord_server: Optional[str]
     created_date: datetime
     created_by: int
     updated_date: Optional[datetime] = None
@@ -76,7 +76,7 @@ class League:
             name=row["name"],
             game_id=row["game_id"],
             match_format=row["match_format"],
-            discord_server=row["discord_server"],
+            discord_server=row.get("discord_server"),
             created_date=row["created_date"],
             created_by=row["created_by"],
             updated_date=row.get("updated_date"),

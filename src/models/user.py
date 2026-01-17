@@ -16,6 +16,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 
 @dataclass
@@ -29,7 +30,7 @@ class User:
         Unique user identifier.
     discord_id : str
         Discord snowflake ID.
-    display_name : str
+    display_name : str, optional
         User's display name.
     created_date : datetime
         When the user was added to the database.
@@ -37,7 +38,7 @@ class User:
 
     id: int
     discord_id: str
-    display_name: str
+    display_name: Optional[str]
     created_date: datetime
 
     @classmethod
@@ -55,4 +56,4 @@ class User:
         User
             User model instance.
         """
-        return cls(id=row["id"], discord_id=row["discord_id"], display_name=row["display_name"], created_date=row["created_date"])
+        return cls(id=row["id"], discord_id=row["discord_id"], display_name=row.get("display_name"), created_date=row["created_date"])
