@@ -89,25 +89,104 @@ src/
 - **Pattern**: Use Python dataclasses for all database entities
 - **Type Hints**: All fields must have type annotations (use `Optional` for nullable fields)
 - **Conversion Method**: Each model must have a `from_row()` classmethod for database row conversion
+- **CRUD Methods**: All models include helper methods for database operations (see below)
 - **Docstrings**: NumPy-style documentation for all models and methods
 - **Boolean Handling**: Convert SQLite INTEGER (0/1) to Python bool using `bool(row['field'])`
+- **Nullable Field Handling**: Use conditional checks for nullable fields: `row['field'] if row['field'] else None`
 - **Imports**: Models are exported through `models/__init__.py` for clean imports
+- **Immutability**: Use `object.__setattr__(self, 'field', value)` when updating dataclass fields in methods
+
+#### Required CRUD Methods
+
+Each model must implement the following methods:
+
+**Instance Methods:**
+
+- `save(db: Database) -> int`: Insert new record (if `id == 0`) or update existing record. Must raise `ValueError` if insert fails.
+- `delete(db: Database) -> int`: Delete the record from the database, return number of rows deleted.
+
+**Class Methods:**
+
+- `from_row(cls, row) -> ModelType`: Convert database row to model instance (already required).
+- `get_by_id(cls, db: Database, id: int) -> Optional[ModelType]`: Retrieve single record by primary key.
+- Additional query methods as appropriate for the model (e.g., `get_by_server()`, `get_by_team()`).
+
+**For Composite Key Models** (e.g., `TeamMembership`, `PermittedMap`):
+
+- `save(db)` checks if record exists before inserting
+- No `id` field, so no `id == 0` check needed
 
 Example model structure:
 
 ```python
 from dataclasses import dataclass
 from typing import Optional
+from ..utils.database import Database
 
 @dataclass
 class Team:
     id: int
     name: str
+    tag: str
     captain_id: int
+    created_at: datetime
+    created_by: int
+    discord_server: str
 
     @classmethod
     def from_row(cls, row) -> 'Team':
-        return cls(id=row['id'], name=row['name'], captain_id=row['captain_id'])
+        return cls(
+            id=row['id'],
+            name=row['name'],
+            tag=row['tag'],
+            captain_id=row['captain_id'],
+            created_at=row['created_at'],
+            created_by=row['created_by'],
+            discord_server=row['discord_server']
+        )
+
+    def save(self, db: Database) -> int:
+        """Save team to database (insert or update)."""
+        if self.id == 0:
+            # Insert new team
+            team_id = db.insert('teams', {
+                'name': self.name,
+                'tag': self.tag,
+                'captain_id': self.captain_id,
+                'created_at': self.created_at,
+                'created_by': self.created_by,
+                'discord_server': self.discord_server
+            })
+            if team_id:
+                object.__setattr__(self, 'id', team_id)
+                return team_id
+            raise ValueError('Failed to insert team')
+        else:
+            # Update existing team
+            db.update('teams', {
+                'name': self.name,
+                'tag': self.tag,
+                'captain_id': self.captain_id,
+                'discord_server': self.discord_server
+            }, 'id = ?', (self.id,))
+            return self.id
+
+    def delete(self, db: Database) -> int:
+        """Delete the team from the database."""
+        return db.delete('teams', 'id = ?', (self.id,))
+
+    @classmethod
+    def get_by_id(cls, db: Database, team_id: int) -> Optional['Team']:
+        """Retrieve a team by ID."""
+        row = db.select_one('teams', where='id = ?', parameters=(team_id,))
+        return cls.from_row(row) if row else None
+
+    @classmethod
+    def get_by_server(cls, db: Database, discord_server: str) -> list['Team']:
+        """Retrieve all teams in a Discord server."""
+        rows = db.select('teams', where='discord_server = ?',
+                        parameters=(discord_server,), order_by='name')
+        return [cls.from_row(row) for row in rows]
 ```
 
 ### Database
@@ -197,14 +276,17 @@ All SQL identifiers (table names, column names) are automatically validated and 
 
 ### CRUD Operations
 
-The `Database` class provides methods for:
+The `Database` class provides low-level methods for:
 
 - `create_table()`: Create new tables with column definitions
 - `insert()`: Insert records with automatic parameterisation
 - `select()`: Query with WHERE clauses and ORDER BY
+- `select_one()`: Query for a single record
 - `update()`: Update records with WHERE conditions
 - `delete()`: Delete records with WHERE conditions
 - `drop_table()`: Drop tables
+
+**IMPORTANT**: Prefer using model CRUD methods (e.g., `team.save(db)`, `Team.get_by_id(db, id)`) over direct database operations. This provides type safety, consistency, and cleaner code. Only use direct database methods when working with tables that don't have model classes or for complex custom queries.
 
 ## Data Model Considerations
 
@@ -216,6 +298,9 @@ The database schema is fully implemented. When working with database entities:
 - Use `Model.from_row(row)` to convert database rows to typed objects
 - Models provide type safety, autocomplete, and clear structure
 - All models use dataclasses with full type annotations
+- **CRUD operations**: All models have built-in `save()`, `delete()`, and query methods
+- **Prefer model methods**: Use `team.save(db)` instead of manual `db.insert()` or `db.update()` calls
+- **Query methods**: Use class methods like `Team.get_by_id(db, id)` or `Team.get_by_server(db, server_id)`
 
 ### Discord IDs
 
@@ -262,21 +347,62 @@ When implementing new commands:
 ### Working with Models and Database
 
 ```python
-from utils import database
-from models import Team, User
+from datetime import datetime
+from utils.database import Database
+from models import Team, User, TeamMembership
 
-# Fetch and convert to model
-with database.Database(database_path=db_path, logger=logger) as db:
-    row = db.select_one("teams", where="id = ?", parameters=(team_id,))
-    if row:
-        team = Team.from_row(row)
-        # Now you have a typed object with autocomplete
-        print(f"Team: {team.name}, Captain: {team.captain_id}")
+# Create and save a new record
+with Database(database_path=db_path, logger=logger) as db:
+    team = Team(
+        id=0,  # 0 indicates new record
+        name="Elite Squad",
+        tag="ES",
+        captain_id=user_id,
+        created_at=datetime.now(),
+        created_by=user_id,
+        discord_server=server_id
+    )
+    team_id = team.save(db)  # Returns the new ID
+    print(f"Created team with ID: {team_id}")
 
-# Fetch multiple rows
-with database.Database(database_path=db_path, logger=logger) as db:
-    rows = db.select("teams", where="discord_server = ?", parameters=(server_id,))
-    teams = [Team.from_row(row) for row in rows]
+# Retrieve a single record by ID
+with Database(database_path=db_path, logger=logger) as db:
+    team = Team.get_by_id(db, team_id)
+    if team:
+        print(f"Team: {team.name}, Tag: {team.tag}")
+
+# Query multiple records
+with Database(database_path=db_path, logger=logger) as db:
+    teams = Team.get_by_server(db, server_id)
+    for team in teams:
+        print(f"- {team.name} [{team.tag}]")
+
+# Update a record
+with Database(database_path=db_path, logger=logger) as db:
+    team = Team.get_by_id(db, team_id)
+    if team:
+        object.__setattr__(team, 'name', 'Elite Squad Pro')
+        team.save(db)  # Updates existing record
+
+# Delete a record
+with Database(database_path=db_path, logger=logger) as db:
+    team = Team.get_by_id(db, team_id)
+    if team:
+        team.delete(db)
+
+# Working with composite key models
+with Database(database_path=db_path, logger=logger) as db:
+    membership = TeamMembership(
+        user_id=user_id,
+        team_id=team_id,
+        joined_date=datetime.now(),
+        updated_date=None
+    )
+    membership.save(db)  # Checks if exists before inserting
+
+    # Query by relationships
+    memberships = TeamMembership.get_by_team(db, team_id)
+    user_teams = TeamMembership.get_by_user(db, user_id)
 ```
 
 ### Checking Team Captain Status

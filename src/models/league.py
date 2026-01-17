@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from ..utils.database import Database
+
 
 @dataclass
 class League:
@@ -76,12 +78,121 @@ class League:
             name=row["name"],
             game_id=row["game_id"],
             match_format=row["match_format"],
-            discord_server=row.get("discord_server"),
+            discord_server=row["discord_server"] if row["discord_server"] else None,
             created_date=row["created_date"],
             created_by=row["created_by"],
-            updated_date=row.get("updated_date"),
-            updated_by=row.get("updated_by"),
+            updated_date=row["updated_date"] if row["updated_date"] else None,
+            updated_by=row["updated_by"] if row["updated_by"] else None,
         )
+
+    def save(self, db: Database) -> int:
+        """
+        Save the league to the database (insert or update).
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+
+        Returns
+        -------
+        int
+            The league ID.
+
+        Raises
+        ------
+        ValueError
+            If insert operation fails.
+        """
+        if self.id == 0:
+            # Insert new league
+            league_id = db.insert(
+                "leagues",
+                {
+                    "name": self.name,
+                    "game_id": self.game_id,
+                    "match_format": self.match_format,
+                    "discord_server": self.discord_server,
+                    "created_date": self.created_date,
+                    "created_by": self.created_by,
+                },
+            )
+            if league_id:
+                object.__setattr__(self, "id", league_id)
+                return league_id
+            raise ValueError("Failed to insert league")
+        else:
+            # Update existing league
+            db.update(
+                "leagues",
+                {
+                    "name": self.name,
+                    "game_id": self.game_id,
+                    "match_format": self.match_format,
+                    "discord_server": self.discord_server,
+                    "updated_date": self.updated_date,
+                    "updated_by": self.updated_by,
+                },
+                "id = ?",
+                (self.id,),
+            )
+            return self.id
+
+    def delete(self, db: Database) -> int:
+        """
+        Delete the league from the database.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+
+        Returns
+        -------
+        int
+            Number of rows deleted.
+        """
+        return db.delete("leagues", "id = ?", (self.id,))
+
+    @classmethod
+    def get_by_id(cls, db: Database, league_id: int) -> Optional["League"]:
+        """
+        Retrieve a league by ID.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        league_id : int
+            League ID to retrieve.
+
+        Returns
+        -------
+        League, optional
+            League instance if found, None otherwise.
+        """
+        row = db.select_one("leagues", where="id = ?", parameters=(league_id,))
+        return cls.from_row(row) if row else None
+
+    @classmethod
+    def get_by_server(cls, db: Database, discord_server: str) -> list["League"]:
+        """
+        Retrieve all leagues in a Discord server.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        discord_server : str
+            Discord server ID.
+
+        Returns
+        -------
+        list[League]
+            List of leagues in the server.
+        """
+        rows = db.select("leagues", where="discord_server = ?", parameters=(discord_server,), order_by="name")
+        return [cls.from_row(row) for row in rows]
 
 
 @dataclass
@@ -122,3 +233,76 @@ class LeagueMembership:
             LeagueMembership model instance.
         """
         return cls(league_id=row["league_id"], team_id=row["team_id"], joined_date=row["joined_date"], joined_by=row["joined_by"])
+
+    def save(self, db: Database) -> None:
+        """
+        Save the league membership to the database (insert only, composite key).
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        """
+        # Check if already exists
+        existing = db.select_one("league_membership", where="league_id = ? AND team_id = ?", parameters=(self.league_id, self.team_id))
+        if not existing:
+            db.insert(
+                "league_membership",
+                {"league_id": self.league_id, "team_id": self.team_id, "joined_date": self.joined_date, "joined_by": self.joined_by},
+            )
+
+    def delete(self, db: Database) -> int:
+        """
+        Delete the league membership from the database.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+
+        Returns
+        -------
+        int
+            Number of rows deleted.
+        """
+        return db.delete("league_membership", "league_id = ? AND team_id = ?", (self.league_id, self.team_id))
+
+    @classmethod
+    def get_by_league(cls, db: Database, league_id: int) -> list["LeagueMembership"]:
+        """
+        Retrieve all teams in a league.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        league_id : int
+            League ID to filter by.
+
+        Returns
+        -------
+        list[LeagueMembership]
+            List of league memberships.
+        """
+        rows = db.select("league_membership", where="league_id = ?", parameters=(league_id,), order_by="joined_date")
+        return [cls.from_row(row) for row in rows]
+
+    @classmethod
+    def get_by_team(cls, db: Database, team_id: int) -> list["LeagueMembership"]:
+        """
+        Retrieve all leagues a team is in.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        team_id : int
+            Team ID to filter by.
+
+        Returns
+        -------
+        list[LeagueMembership]
+            List of league memberships.
+        """
+        rows = db.select("league_membership", where="team_id = ?", parameters=(team_id,))
+        return [cls.from_row(row) for row in rows]

@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from ..utils.database import Database
+
 
 @dataclass
 class Match:
@@ -82,10 +84,147 @@ class Match:
             issued_date=row["issued_date"],
             issued_by=row["issued_by"],
             match_date=row["match_date"],
-            winning_team=row.get("winning_team"),
+            winning_team=row["winning_team"] if row["winning_team"] else None,
             match_accepted=bool(row.get("match_accepted", 0)),
             match_cancelled=bool(row.get("match_cancelled", 0)),
         )
+
+    def save(self, db: Database) -> int:
+        """
+        Save the match to the database (insert or update).
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+
+        Returns
+        -------
+        int
+            The match ID.
+
+        Raises
+        ------
+        ValueError
+            If insert operation fails.
+        """
+        if self.id == 0:
+            # Insert new match
+            match_id = db.insert(
+                "matches",
+                {
+                    "league_id": self.league_id,
+                    "challenging_team": self.challenging_team,
+                    "defending_team": self.defending_team,
+                    "issued_date": self.issued_date,
+                    "issued_by": self.issued_by,
+                    "match_date": self.match_date,
+                    "match_accepted": int(self.match_accepted),
+                    "match_cancelled": int(self.match_cancelled),
+                },
+            )
+            if match_id:
+                object.__setattr__(self, "id", match_id)
+                return match_id
+            raise ValueError("Failed to insert match")
+        else:
+            # Update existing match
+            db.update(
+                "matches",
+                {
+                    "league_id": self.league_id,
+                    "challenging_team": self.challenging_team,
+                    "defending_team": self.defending_team,
+                    "match_date": self.match_date,
+                    "winning_team": self.winning_team,
+                    "match_accepted": int(self.match_accepted),
+                    "match_cancelled": int(self.match_cancelled),
+                },
+                "id = ?",
+                (self.id,),
+            )
+            return self.id
+
+    def delete(self, db: Database) -> int:
+        """
+        Delete the match from the database.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+
+        Returns
+        -------
+        int
+            Number of rows deleted.
+        """
+        return db.delete("matches", "id = ?", (self.id,))
+
+    @classmethod
+    def get_by_id(cls, db: Database, match_id: int) -> Optional["Match"]:
+        """
+        Retrieve a match by ID.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        match_id : int
+            Match ID to retrieve.
+
+        Returns
+        -------
+        Match, optional
+            Match instance if found, None otherwise.
+        """
+        row = db.select_one("matches", where="id = ?", parameters=(match_id,))
+        return cls.from_row(row) if row else None
+
+    @classmethod
+    def get_by_league(cls, db: Database, league_id: int) -> list["Match"]:
+        """
+        Retrieve all matches in a league.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        league_id : int
+            League ID to filter by.
+
+        Returns
+        -------
+        list[Match]
+            List of matches in the league.
+        """
+        rows = db.select("matches", where="league_id = ?", parameters=(league_id,), order_by="match_date DESC")
+        return [cls.from_row(row) for row in rows]
+
+    @classmethod
+    def get_by_team(cls, db: Database, team_id: int) -> list["Match"]:
+        """
+        Retrieve all matches for a team.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        team_id : int
+            Team ID to filter by.
+
+        Returns
+        -------
+        list[Match]
+            List of matches for the team.
+        """
+        rows = db.select(
+            "matches",
+            where="challenging_team = ? OR defending_team = ?",
+            parameters=(team_id, team_id),
+            order_by="match_date DESC",
+        )
+        return [cls.from_row(row) for row in rows]
 
 
 @dataclass
@@ -139,3 +278,75 @@ class MatchResult:
             defending_team_score=row["defending_team_score"],
             winning_team=row["winning_team"],
         )
+
+    def save(self, db: Database) -> None:
+        """
+        Save the match result to the database (insert or update).
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        """
+        # Check if already exists
+        existing = db.select_one("match_results", where="match_id = ? AND round = ?", parameters=(self.match_id, self.round))
+        if not existing:
+            db.insert(
+                "match_results",
+                {
+                    "match_id": self.match_id,
+                    "round": self.round,
+                    "map_id": self.map_id,
+                    "challenging_team_score": self.challenging_team_score,
+                    "defending_team_score": self.defending_team_score,
+                    "winning_team": self.winning_team,
+                },
+            )
+        else:
+            db.update(
+                "match_results",
+                {
+                    "map_id": self.map_id,
+                    "challenging_team_score": self.challenging_team_score,
+                    "defending_team_score": self.defending_team_score,
+                    "winning_team": self.winning_team,
+                },
+                "match_id = ? AND round = ?",
+                (self.match_id, self.round),
+            )
+
+    def delete(self, db: Database) -> int:
+        """
+        Delete the match result from the database.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+
+        Returns
+        -------
+        int
+            Number of rows deleted.
+        """
+        return db.delete("match_results", "match_id = ? AND round = ?", (self.match_id, self.round))
+
+    @classmethod
+    def get_by_match(cls, db: Database, match_id: int) -> list["MatchResult"]:
+        """
+        Retrieve all results for a match.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        match_id : int
+            Match ID to filter by.
+
+        Returns
+        -------
+        list[MatchResult]
+            List of match results ordered by round.
+        """
+        rows = db.select("match_results", where="match_id = ?", parameters=(match_id,), order_by="round")
+        return [cls.from_row(row) for row in rows]
