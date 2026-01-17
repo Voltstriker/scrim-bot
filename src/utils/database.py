@@ -61,7 +61,7 @@ class Database:
         self.connection: sqlite3.Connection | None = None
         self.cursor: sqlite3.Cursor | None = None
 
-        self.logger.info(f"Database initialised at: {self.database_path}")
+        self.logger.info("Database initialised at: %s", self.database_path)
 
     @staticmethod
     def _validate_identifier(identifier: str, identifier_type: str = "identifier") -> str:
@@ -135,9 +135,9 @@ class Database:
             self.connection = sqlite3.connect(self.database_path)
             self.connection.row_factory = sqlite3.Row  # Enable column access by name
             self.cursor = self.connection.cursor()
-            self.logger.debug(f"Connected to database: {self.database_path}")
+            self.logger.debug("Connected to database: %s", self.database_path)
         except sqlite3.Error as ex:
-            self.logger.error(f"Failed to connect to database: {ex}")
+            self.logger.error("Failed to connect to database: %s", ex)
             raise
 
     def disconnect(self) -> None:
@@ -155,7 +155,7 @@ class Database:
                 self.cursor = None
                 self.logger.debug("Disconnected from database")
             except sqlite3.Error as ex:
-                self.logger.error(f"Error disconnecting from database: {ex}")
+                self.logger.error("Error disconnecting from database: %s", ex)
                 raise
 
     def __enter__(self):
@@ -188,11 +188,11 @@ class Database:
                 self.cursor.execute(query, parameters)
             else:
                 self.cursor.execute(query)
-            self.logger.debug(f"Executed query: {query}")
+            self.logger.debug("Executed query: %s", query)
             return self.cursor
         except sqlite3.Error as ex:
-            self.logger.error(f"Error executing query: {ex}")
-            self.logger.error(f"Query: {query}")
+            self.logger.error("Error executing query: %s", ex)
+            self.logger.error("Query: %s", query)
             raise
 
     def commit(self) -> None:
@@ -206,7 +206,7 @@ class Database:
                 self.connection.commit()
                 self.logger.debug("Transaction committed")
             except sqlite3.Error as ex:
-                self.logger.error(f"Error committing transaction: {ex}")
+                self.logger.error("Error committing transaction: %s", ex)
                 raise
 
     def rollback(self) -> None:
@@ -220,7 +220,7 @@ class Database:
                 self.connection.rollback()
                 self.logger.debug("Transaction rolled back")
             except sqlite3.Error as ex:
-                self.logger.error(f"Error rolling back transaction: {ex}")
+                self.logger.error("Error rolling back transaction: %s", ex)
                 raise
 
     def create_table(self, table_name: str, columns: dict[str, str], if_not_exists: bool = True) -> None:
@@ -248,7 +248,7 @@ class Database:
 
         self.execute(query)
         self.commit()
-        self.logger.info(f"Table '{table_name}' created successfully")
+        self.logger.info("Table '%s' created successfully", table_name)
 
     def insert(self, table_name: str, data: dict[str, Any]) -> int | None:
         """
@@ -273,7 +273,7 @@ class Database:
         self.commit()
 
         last_row_id = self.cursor.lastrowid if self.cursor else None
-        self.logger.debug(f"Inserted row with ID {last_row_id} into '{table_name}'")
+        self.logger.debug("Inserted row with ID %s into '%s'", last_row_id, table_name)
         return last_row_id
 
     def insert_many(self, table_name: str, data_list: list[dict[str, Any]]) -> None:
@@ -300,9 +300,9 @@ class Database:
             try:
                 self.cursor.executemany(query, [tuple(data.values()) for data in data_list])
                 self.commit()
-                self.logger.debug(f"Inserted {len(data_list)} rows into '{table_name}'")
+                self.logger.debug("Inserted %s rows into '%s'", len(data_list), table_name)
             except sqlite3.Error as ex:
-                self.logger.error(f"Error inserting multiple rows: {ex}")
+                self.logger.error("Error inserting multiple rows: %s", ex)
                 raise
 
     def select(
@@ -351,7 +351,7 @@ class Database:
         cursor = self.execute(query, parameters)
         if cursor:
             results = cursor.fetchall()
-            self.logger.debug(f"Selected {len(results)} rows from '{table_name}'")
+            self.logger.debug("Selected %s rows from '%s'", len(results), table_name)
             return results
         return []
 
@@ -416,7 +416,7 @@ class Database:
         self.commit()
 
         rows_affected = cursor.rowcount if cursor else 0
-        self.logger.debug(f"Updated {rows_affected} rows in '{table_name}'")
+        self.logger.debug("Updated %s rows in '%s'", rows_affected, table_name)
         return rows_affected
 
     def delete(
@@ -444,7 +444,7 @@ class Database:
         self.commit()
 
         rows_affected = cursor.rowcount if cursor else 0
-        self.logger.debug(f"Deleted {rows_affected} rows from '{table_name}'")
+        self.logger.debug("Deleted %s rows from '%s'", rows_affected, table_name)
         return rows_affected
 
     def table_exists(self, table_name: str) -> bool:
@@ -497,7 +497,7 @@ class Database:
 
         self.execute(query)
         self.commit()
-        self.logger.info(f"Table '{table_name}' dropped successfully")
+        self.logger.info("Table '%s' dropped successfully", table_name)
 
     def initialise_schema(self) -> None:
         """

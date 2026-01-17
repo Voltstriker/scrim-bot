@@ -1,10 +1,18 @@
+"""
+Main entry point for Scrim Bot.
+
+This module initialises the Discord bot, sets up logging, checks for and
+initialises the database if needed, and launches the bot with the configured
+Discord token.
+"""
+
 import os
 from pathlib import Path
 
 import discord
 from dotenv import load_dotenv
 
-from utils import database, discord_bot, logging
+from .utils import database, discord_bot, logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,16 +28,15 @@ logger = logging.LoggingFormatter.start_logging(
 db_path = os.getenv("DATABASE_PATH")
 if db_path:
     db_file = Path(db_path)
-    db_exists = db_file.exists()
 
-    if not db_exists:
-        logger.info(f"Database file not found at {db_path}. Creating and initialising...")
+    if not db_file.exists():
+        logger.info("Database file not found at %s. Creating and initialising...", db_path)
         db = database.Database(database_path=db_path, logger=logger)
         with db:
             db.initialise_schema()
         logger.info("Database created and initialised successfully")
     else:
-        logger.info(f"Database file found at {db_path}")
+        logger.info("Database file found at %s", db_path)
 else:
     logger.error("DATABASE_PATH not set in environment variables")
     raise ValueError("Missing DATABASE_PATH in environment variables.")

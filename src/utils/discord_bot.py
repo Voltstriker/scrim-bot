@@ -144,9 +144,9 @@ class DiscordBot(commands.Bot):
                     cogs_loaded.append(extension)
                 except Exception as e:
                     exception = f"{type(e).__name__}: {e}"
-                    self.logger.error(f"Failed to load extension {extension}\n{exception}")
+                    self.logger.error("Failed to load extension %s\n%s", extension, exception)
 
-        self.logger.info(f"Loaded extensions: {', '.join(cogs_loaded)}")
+        self.logger.info("Loaded extensions: %s", ', '.join(cogs_loaded))
 
     async def on_message(self, message: discord.Message) -> None:  # pylint: disable=arguments-differ
         """
@@ -186,17 +186,26 @@ class DiscordBot(commands.Bot):
             client_id,
         )
 
-    async def on_command_error(self, context, error) -> None:
-        """Global error handler for commands."""
+    async def on_command_error(self, context: commands.Context, error: commands.CommandError) -> None:  # pylint: disable=arguments-differ
+        """
+        Global error handler for commands.
+
+        Parameters
+        ----------
+        context : commands.Context
+            The invocation context where the error occurred.
+        error : commands.CommandError
+            The error that was raised during command execution.
+        """
         if isinstance(error, commands.CommandNotFound):
-            self.logger.warning(f"Command not found: {context.message.content}")
+            self.logger.warning("Command not found: %s", context.message.content)
             await context.send("Command not found. Use `!help` to see available commands.")
         elif isinstance(error, commands.MissingRequiredArgument):
-            self.logger.warning(f"Missing argument for command {context.command}: {error.param.name}")
+            self.logger.warning("Missing argument for command %s: %s", context.command, error.param.name)
             await context.send(f"Missing required argument: {error.param.name}")
         elif isinstance(error, commands.MissingPermissions):
-            self.logger.warning(f"Missing permissions for command {context.command}: {error.missing_permissions}")
+            self.logger.warning("Missing permissions for command %s: %s", context.command, error.missing_permissions)
             await context.send("You don't have permission to use this command.")
         else:
-            self.logger.error(f"Unhandled error: {error}")
+            self.logger.error("Unhandled error: %s", error)
             await context.send("An error occurred while processing your command.")
