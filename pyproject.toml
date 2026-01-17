@@ -53,6 +53,7 @@ disable = [
     "C0199",
     "C0411",
     "W0718",
+    "C0103"
 ]
 
 [tool.pyright]
