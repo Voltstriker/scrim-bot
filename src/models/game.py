@@ -82,10 +82,9 @@ class Game:
                 object.__setattr__(self, "id", game_id)
                 return game_id
             raise ValueError("Failed to insert game")
-        else:
-            # Update existing game
-            db.update("games", {"name": self.name, "series": self.series}, "id = ?", (self.id,))
-            return self.id
+        # Update existing game
+        db.update("games", {"name": self.name, "series": self.series}, "id = ?", (self.id,))
+        return self.id
 
     def delete(self, db: Database) -> int:
         """
@@ -207,10 +206,9 @@ class Map:
                 object.__setattr__(self, "id", map_id)
                 return map_id
             raise ValueError("Failed to insert map")
-        else:
-            # Update existing map
-            db.update("maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id}, "id = ?", (self.id,))
-            return self.id
+        # Update existing map
+        db.update("maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id}, "id = ?", (self.id,))
+        return self.id
 
     def delete(self, db: Database) -> int:
         """
@@ -331,10 +329,9 @@ class MatchFormat:
                 object.__setattr__(self, "id", format_id)
                 return format_id
             raise ValueError("Failed to insert match format")
-        else:
-            # Update existing match format
-            db.update("match_formats", {"max_players": self.max_players, "match_count": self.match_count}, "id = ?", (self.id,))
-            return self.id
+        # Update existing match format
+        db.update("match_formats", {"max_players": self.max_players, "match_count": self.match_count}, "id = ?", (self.id,))
+        return self.id
 
     def delete(self, db: Database) -> int:
         """

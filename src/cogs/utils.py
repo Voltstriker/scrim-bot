@@ -163,7 +163,7 @@ class Utils(commands.Cog, name="Utils"):
             )
             await message.edit(embed=embed)
             return
-        elif scope == "guild":
+        if scope == "guild":
             if context.guild is None:
                 embed = discord.Embed(description="This command must be used in a guild.", color=0xE02B2B)
                 await context.send(embed=embed)

@@ -12,7 +12,7 @@ from pathlib import Path
 import discord
 from dotenv import load_dotenv
 
-from utils import database, discord_bot, logging
+from utils import database, discord_bot, logging  # pylint: disable=no-name-in-module
 
 # Load environment variables from .env file
 load_dotenv()

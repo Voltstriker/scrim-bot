@@ -305,7 +305,7 @@ class Database:
                 self.logger.error("Error inserting multiple rows: %s", ex)
                 raise
 
-    def select(
+    def select(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         table_name: str,
         columns: list[str] | None = None,

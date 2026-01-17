@@ -22,7 +22,7 @@ from ..utils.database import Database
 
 
 @dataclass
-class Match:
+class Match:  # pylint: disable=too-many-instance-attributes
     """
     Represents a match between two teams.
 
@@ -127,23 +127,22 @@ class Match:
                 object.__setattr__(self, "id", match_id)
                 return match_id
             raise ValueError("Failed to insert match")
-        else:
-            # Update existing match
-            db.update(
-                "matches",
-                {
-                    "league_id": self.league_id,
-                    "challenging_team": self.challenging_team,
-                    "defending_team": self.defending_team,
-                    "match_date": self.match_date,
-                    "winning_team": self.winning_team,
-                    "match_accepted": int(self.match_accepted),
-                    "match_cancelled": int(self.match_cancelled),
-                },
-                "id = ?",
-                (self.id,),
-            )
-            return self.id
+        # Update existing match
+        db.update(
+            "matches",
+            {
+                "league_id": self.league_id,
+                "challenging_team": self.challenging_team,
+                "defending_team": self.defending_team,
+                "match_date": self.match_date,
+                "winning_team": self.winning_team,
+                "match_accepted": int(self.match_accepted),
+                "match_cancelled": int(self.match_cancelled),
+            },
+            "id = ?",
+            (self.id,),
+        )
+        return self.id
 
     def delete(self, db: Database) -> int:
         """

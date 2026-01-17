@@ -89,15 +89,14 @@ class User:
                 object.__setattr__(self, "id", user_id)
                 return user_id
             raise ValueError("Failed to insert user")
-        else:
-            # Update existing user
-            db.update(
-                "users",
-                {"discord_id": self.discord_id, "display_name": self.display_name},
-                "id = ?",
-                (self.id,),
-            )
-            return self.id
+        # Update existing user
+        db.update(
+            "users",
+            {"discord_id": self.discord_id, "display_name": self.display_name},
+            "id = ?",
+            (self.id,),
+        )
+        return self.id
 
     def delete(self, db: Database) -> int:
         """

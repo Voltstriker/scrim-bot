@@ -113,15 +113,14 @@ class Team:
                 object.__setattr__(self, "id", team_id)
                 return team_id
             raise ValueError("Failed to insert team")
-        else:
-            # Update existing team
-            db.update(
-                "teams",
-                {"name": self.name, "tag": self.tag, "captain_id": self.captain_id, "discord_server": self.discord_server},
-                "id = ?",
-                (self.id,),
-            )
-            return self.id
+        # Update existing team
+        db.update(
+            "teams",
+            {"name": self.name, "tag": self.tag, "captain_id": self.captain_id, "discord_server": self.discord_server},
+            "id = ?",
+            (self.id,),
+        )
+        return self.id
 
     def delete(self, db: Database) -> int:
         """
@@ -298,7 +297,7 @@ class TeamMembership:
 
 
 @dataclass
-class TeamPermissionsUser:
+class TeamPermissionsUser:  # pylint: disable=too-many-instance-attributes
     """
     Represents user-specific permissions for a team.
 
@@ -465,7 +464,7 @@ class TeamPermissionsUser:
 
 
 @dataclass
-class TeamPermissionsRole:
+class TeamPermissionsRole:  # pylint: disable=too-many-instance-attributes
     """
     Represents role-based permissions for a team.
 

@@ -22,7 +22,7 @@ from ..utils.database import Database
 
 
 @dataclass
-class League:
+class League:  # pylint: disable=too-many-instance-attributes
     """
     Represents a competition league.
 
@@ -121,22 +121,21 @@ class League:
                 object.__setattr__(self, "id", league_id)
                 return league_id
             raise ValueError("Failed to insert league")
-        else:
-            # Update existing league
-            db.update(
-                "leagues",
-                {
-                    "name": self.name,
-                    "game_id": self.game_id,
-                    "match_format": self.match_format,
-                    "discord_server": self.discord_server,
-                    "updated_date": self.updated_date,
-                    "updated_by": self.updated_by,
-                },
-                "id = ?",
-                (self.id,),
-            )
-            return self.id
+        # Update existing league
+        db.update(
+            "leagues",
+            {
+                "name": self.name,
+                "game_id": self.game_id,
+                "match_format": self.match_format,
+                "discord_server": self.discord_server,
+                "updated_date": self.updated_date,
+                "updated_by": self.updated_by,
+            },
+            "id = ?",
+            (self.id,),
+        )
+        return self.id
 
     def delete(self, db: Database) -> int:
         """
