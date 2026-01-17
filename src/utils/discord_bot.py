@@ -145,7 +145,7 @@ class DiscordBot(commands.Bot):
                     exception = f"{type(e).__name__}: {e}"
                     self.logger.error("Failed to load extension %s\n%s", extension, exception)
 
-        self.logger.info("Loaded extensions: %s", ', '.join(cogs_loaded))
+        self.logger.info("Loaded extensions: %s", ", ".join(cogs_loaded))
 
     async def on_message(self, message: discord.Message) -> None:  # pylint: disable=arguments-differ
         """
