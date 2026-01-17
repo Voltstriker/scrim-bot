@@ -108,14 +108,11 @@ class MatchFormat:
         Maximum number of players per team.
     match_count : int
         Number of rounds/games in the match.
-    map_list_id : int
-        Reference to the map list configuration.
     """
 
     id: int
     max_players: int
     match_count: int
-    map_list_id: int
 
     @classmethod
     def from_row(cls, row) -> "MatchFormat":
@@ -132,7 +129,7 @@ class MatchFormat:
         MatchFormat
             MatchFormat model instance.
         """
-        return cls(id=row["id"], max_players=row["max_players"], match_count=row["match_count"], map_list_id=row["map_list_id"])
+        return cls(id=row["id"], max_players=row["max_players"], match_count=row["match_count"])
 
 
 @dataclass
