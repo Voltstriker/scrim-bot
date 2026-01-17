@@ -75,7 +75,7 @@ class General(commands.Cog, name="General"):
         """
         embed = discord.Embed(
             title="Scrim Bot",
-            description="**Scrim Bot** is a Discord Bot designed to assist competitive teams with organising and challenging other teams to practice scrims or matches.", #pylint: disable=line-too-long
+            description="**Scrim Bot** is a Discord Bot designed to assist competitive teams with organising and challenging other teams to practice scrims or matches.",  # pylint: disable=line-too-long
             color=discord.Color.blue(),
         )
         embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
