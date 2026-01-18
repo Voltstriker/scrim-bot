@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from ..utils.database import Database
+from utils.database import Database  # pylint: disable=import-error,no-name-in-module
 
 
 @dataclass
