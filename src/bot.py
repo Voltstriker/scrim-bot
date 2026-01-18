@@ -51,13 +51,18 @@ if db_path:
     # Now that database exists with schema, add database logging handler
     logging.add_database_handler(logger, db_path)
     logger.debug("Database logging handler enabled")
+
+    # Create persistent database instance for the bot
+    db_instance = database.Database(database_path=db_path, logger=logger)
+    db_instance.connect()
+    logger.debug("Persistent database connection established")
 else:
     logger.error("DATABASE_PATH not set in environment variables")
     raise ValueError("Missing DATABASE_PATH in environment variables.")
 
-# Create bot instance
+# Create bot instance with database
 intents = discord.Intents.all()
-bot = discord_bot.DiscordBot(logger=logger, intents=intents)
+bot = discord_bot.DiscordBot(logger=logger, database=db_instance, intents=intents)
 
 # Launch the Discord bot
 token = os.getenv("DISCORD_TOKEN")

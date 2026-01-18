@@ -29,10 +29,16 @@ setup(bot)
     Loads the General cog into the bot.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
+
+if TYPE_CHECKING:
+    from utils.discord_bot import DiscordBot  # pylint: disable=import-error,no-name-in-module
 
 
 class General(commands.Cog, name="General"):
@@ -52,13 +58,13 @@ class General(commands.Cog, name="General"):
         Sends a message as the bot in the current channel.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DiscordBot) -> None:
         """
         Initialises the General cog.
 
         Parameters
         ----------
-        bot : discord.ext.commands.Bot
+        bot : DiscordBot
             The bot instance to which this cog is attached.
         """
         self.bot = bot
@@ -84,13 +90,13 @@ class General(commands.Cog, name="General"):
         await context.send(embed=embed)
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: DiscordBot) -> None:
     """
     Loads the General cog into the bot.
 
     Parameters
     ----------
-    bot : discord.ext.commands.Bot
+    bot : DiscordBot
         The bot instance to which this cog is attached.
     """
     await bot.add_cog(General(bot))

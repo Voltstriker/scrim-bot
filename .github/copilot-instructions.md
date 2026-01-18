@@ -197,6 +197,10 @@ class Team:
 - **Access**: Use the `Database` class from `utils.database`
 - **Schema**: Fully implemented in `initialise_schema()` method
 - **Models**: Use dataclasses from `models/` for type-safe data access
+- **Persistent Connection**: The bot maintains a single database connection stored in `bot.database`
+  - Access via `self.bot.database` in cogs
+  - No need to create new database connections in commands
+  - Connection established in `bot.py` and passed to `DiscordBot` on initialisation
 
 ### Database Schema
 
@@ -242,6 +246,42 @@ Required variables in `.env`:
 - Main bot instance created in `bot.py`
 - Custom bot class: `DiscordBot` in `utils.discord_bot`
 - Intents: `discord.Intents.all()` (requires privileged intents enabled)
+- **Database Access**: Bot maintains a persistent database connection accessible via `self.bot.database` in cogs
+
+### Cog Structure and Type Hints
+
+All cogs must use the `DiscordBot` type for type safety and to access the persistent database connection:
+
+```python
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from discord.ext import commands
+
+if TYPE_CHECKING:
+    from utils.discord_bot import DiscordBot
+
+class MyCog(commands.Cog):
+    def __init__(self, bot: DiscordBot) -> None:
+        self.bot = bot
+
+    @commands.hybrid_command()
+    async def my_command(self, context: Context) -> None:
+        # Access database via bot instance
+        game = Game.get_by_id(self.bot.database, game_id)
+
+async def setup(bot: DiscordBot) -> None:
+    await bot.add_cog(MyCog(bot))
+```
+
+**Key points:**
+
+- Use `from __future__ import annotations` to enable deferred type annotation evaluation
+- Import `DiscordBot` inside `TYPE_CHECKING` block to avoid circular imports
+- Type hint `bot` parameter as `DiscordBot` (not `commands.Bot`)
+- Access database via `self.bot.database` instead of creating new connections
+- No context manager needed - connection is persistent
 
 ### Command Organisation
 
@@ -268,9 +308,10 @@ Example pattern:
 @commands.hybrid_command(name="command")
 async def my_command(self, context: Context) -> None:
     await context.defer()  # Defer before time-consuming operations
-    # Database operations or other slow tasks here
-    with Database(database_path=self.database_path, logger=self.bot.logger) as db:
-        # ... database work ...
+
+    # Access persistent database connection from bot
+    game = Game.get_by_id(self.bot.database, game_id)
+
     await context.send(embed=embed)  # Response after deferral
 ```
 
@@ -284,9 +325,24 @@ async def my_command(self, context: Context) -> None:
 
 ### Connection Management
 
-Use context managers for database operations:
+**IMPORTANT**: The bot maintains a persistent database connection accessible via `self.bot.database` in cogs. Use this instead of creating new connections:
 
 ```python
+# In cogs - use the persistent connection
+@commands.hybrid_command()
+async def my_command(self, context: Context) -> None:
+    await context.defer()
+
+    # Access the persistent database connection
+    game = Game.get_by_id(self.bot.database, game_id)
+
+    await context.send(embed=embed)
+```
+
+Only use context managers when working outside of cogs (e.g., in `bot.py` during initialisation):
+
+```python
+# In bot.py or standalone scripts
 with database.Database(database_path=db_path, logger=logger) as db:
     db.execute(query)
 ```

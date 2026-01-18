@@ -29,10 +29,17 @@ setup(bot)
     Loads the Utils cog into the bot.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
+
+if TYPE_CHECKING:
+    from utils.discord_bot import DiscordBot  # pylint: disable=import-error,no-name-in-module
 
 
 class Utils(commands.Cog, name="Utils"):
@@ -59,13 +66,13 @@ class Utils(commands.Cog, name="Utils"):
         Unsynchronises the bot's slash commands.
     """
 
-    def __init__(self, bot: commands.Bot) -> None:
+    def __init__(self, bot: DiscordBot) -> None:
         """
         Initialises the Utils cog.
 
         Parameters
         ----------
-        bot : discord.ext.commands.Bot
+        bot : DiscordBot
             The bot instance to which this cog is attached.
         """
         self.bot = bot
@@ -182,13 +189,13 @@ class Utils(commands.Cog, name="Utils"):
         await context.send(embed=embed)
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: DiscordBot) -> None:
     """
     Loads the Utils cog into the bot.
 
     Parameters
     ----------
-    bot : discord.ext.commands.Bot
+    bot : DiscordBot
         The bot instance to which this cog is attached.
     """
     await bot.add_cog(Utils(bot))

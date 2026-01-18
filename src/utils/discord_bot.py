@@ -29,9 +29,13 @@ import os
 import platform
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import discord
 from discord.ext import commands
+
+if TYPE_CHECKING:
+    from utils.database import Database  # pylint: disable=cyclic-import
 
 
 class DiscordBot(commands.Bot):
@@ -46,6 +50,8 @@ class DiscordBot(commands.Bot):
     ----------
     logger : logging.Logger
         The logger instance for logging bot events.
+    database : Database
+        The database instance for database operations.
     bot_prefix : str
         The command prefix for the bot, retrieved from environment variables.
     user_name : str
@@ -55,7 +61,7 @@ class DiscordBot(commands.Bot):
 
     Methods
     -------
-    __init__(logger, intents)
+    __init__(logger, database, intents)
         Initialises the DiscordBot instance.
     status_task()
         Periodically updates the bot's status.
@@ -77,7 +83,7 @@ class DiscordBot(commands.Bot):
     - Cogs are loaded dynamically from the cogs directory.
     """
 
-    def __init__(self, logger: logging.Logger, intents: discord.Intents) -> None:
+    def __init__(self, logger: logging.Logger, database: "Database", intents: discord.Intents) -> None:
         """
         Initialise the DiscordBot instance.
 
@@ -85,6 +91,8 @@ class DiscordBot(commands.Bot):
         ----------
         logger : logging.Logger
             The logger instance for logging bot events.
+        database : Database
+            The database instance for database operations.
         intents : discord.Intents
             The intents to use for the bot.
         """
@@ -95,6 +103,7 @@ class DiscordBot(commands.Bot):
         )
 
         self.logger = logger
+        self.database = database
         self.bot_prefix = os.getenv("COMMAND_PREFIX", "!")
         self.user_name = os.getenv("BOT_NAME", "Scrim Bot")
         self.app_dir = Path(os.path.dirname(os.path.abspath(__file__))).parent
