@@ -197,8 +197,10 @@ class Match:  # pylint: disable=too-many-instance-attributes
         list[Match]
             List of matches in the league.
         """
-        rows = db.select("matches", where="league_id = ?", parameters=(league_id,), order_by="match_date DESC")
-        return [cls.from_row(row) for row in rows]
+        rows = db.select("matches", where="league_id = ?", parameters=(league_id,))
+        matches = [cls.from_row(row) for row in rows]
+        matches.sort(key=lambda m: m.match_date, reverse=True)
+        return matches
 
     @classmethod
     def get_by_team(cls, db: Database, team_id: int) -> list["Match"]:
@@ -221,9 +223,10 @@ class Match:  # pylint: disable=too-many-instance-attributes
             "matches",
             where="challenging_team = ? OR defending_team = ?",
             parameters=(team_id, team_id),
-            order_by="match_date DESC",
         )
-        return [cls.from_row(row) for row in rows]
+        matches = [cls.from_row(row) for row in rows]
+        matches.sort(key=lambda m: m.match_date, reverse=True)
+        return matches
 
 
 @dataclass

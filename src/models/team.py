@@ -272,8 +272,10 @@ class TeamMembership:
         list[TeamMembership]
             List of team memberships.
         """
-        rows = db.select("team_membership", where="team_id = ?", parameters=(team_id,), order_by="joined_date")
-        return [cls.from_row(row) for row in rows]
+        rows = db.select("team_membership", where="team_id = ?", parameters=(team_id,))
+        memberships = [cls.from_row(row) for row in rows]
+        memberships.sort(key=lambda m: m.joined_date)
+        return memberships
 
     @classmethod
     def get_by_user(cls, db: Database, user_id: int) -> list["TeamMembership"]:

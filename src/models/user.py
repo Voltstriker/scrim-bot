@@ -182,7 +182,9 @@ class User:
         Returns
         -------
         list[User]
-            List of all users.
+            List of all users, sorted by created_date descending.
         """
-        rows = db.select("users", order_by="created_date DESC")
-        return [cls.from_row(row) for row in rows]
+        rows = db.select("users")
+        users = [cls.from_row(row) for row in rows]
+        users.sort(key=lambda u: u.created_date, reverse=True)
+        return users

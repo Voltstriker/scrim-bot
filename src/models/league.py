@@ -283,8 +283,10 @@ class LeagueMembership:
         list[LeagueMembership]
             List of league memberships.
         """
-        rows = db.select("league_membership", where="league_id = ?", parameters=(league_id,), order_by="joined_date")
-        return [cls.from_row(row) for row in rows]
+        rows = db.select("league_membership", where="league_id = ?", parameters=(league_id,))
+        memberships = [cls.from_row(row) for row in rows]
+        memberships.sort(key=lambda m: m.joined_date)
+        return memberships
 
     @classmethod
     def get_by_team(cls, db: Database, team_id: int) -> list["LeagueMembership"]:
