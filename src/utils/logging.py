@@ -187,7 +187,8 @@ class DatabaseHandler(logging.Handler):
         try:
             # Connect to database if not already connected
             if self.connection is None:
-                self.connection = sqlite3.connect(self.database_path, check_same_thread=False)
+                # Set a 5 second timeout to wait for database locks
+                self.connection = sqlite3.connect(self.database_path, timeout=5.0, check_same_thread=False)
 
             cursor = self.connection.cursor()
 
@@ -209,6 +210,9 @@ class DatabaseHandler(logging.Handler):
             )
 
             self.connection.commit()
+        except sqlite3.OperationalError:
+            # Silently fail if database is locked - logging failures shouldn't break the application
+            pass
         except Exception:
             # Silently fail to avoid recursion if logging the error causes another error
             self.handleError(record)
