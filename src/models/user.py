@@ -58,7 +58,7 @@ class User:
         User
             User model instance.
         """
-        return cls(id=row["id"], discord_id=row["discord_id"], display_name=row.get("display_name"), created_date=row["created_date"])
+        return cls(id=row["id"], discord_id=row["discord_id"], display_name=row["display_name"] if row["display_name"] else None, created_date=row["created_date"])
 
     def save(self, db: Database) -> int:
         """

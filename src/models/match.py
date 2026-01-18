@@ -85,8 +85,8 @@ class Match:  # pylint: disable=too-many-instance-attributes
             issued_by=row["issued_by"],
             match_date=row["match_date"],
             winning_team=row["winning_team"] if row["winning_team"] else None,
-            match_accepted=bool(row.get("match_accepted", 0)),
-            match_cancelled=bool(row.get("match_cancelled", 0)),
+            match_accepted=bool(row["match_accepted"]) if row["match_accepted"] else False,
+            match_cancelled=bool(row["match_cancelled"]) if row["match_cancelled"] else False,
         )
 
     def save(self, db: Database) -> int:
