@@ -253,6 +253,27 @@ Commands should be organised into cogs based on functionality:
 - League management commands
 - Administrative commands
 
+### Interaction Deferral
+
+**CRITICAL**: Discord hybrid commands have a 3-second timeout for initial responses. For commands that perform database operations or other time-consuming tasks:
+
+- **Always call `await context.defer()` at the start** of commands that take longer than 3 seconds
+- Deferral tells Discord "processing..." and extends the timeout to 15 minutes
+- Without deferral, commands will fail with "404 Not Found (error code: 10062): Unknown interaction"
+- Apply to all commands with database operations, API calls, or complex processing
+
+Example pattern:
+
+```python
+@commands.hybrid_command(name="command")
+async def my_command(self, context: Context) -> None:
+    await context.defer()  # Defer before time-consuming operations
+    # Database operations or other slow tasks here
+    with Database(database_path=self.database_path, logger=self.bot.logger) as db:
+        # ... database work ...
+    await context.send(embed=embed)  # Response after deferral
+```
+
 ### Error Handling
 
 - Handle `discord.PrivilegedIntentsRequired` specifically
