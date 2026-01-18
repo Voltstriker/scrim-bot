@@ -49,7 +49,7 @@ class DiscordBot(commands.Bot):
     bot_prefix : str
         The command prefix for the bot, retrieved from environment variables.
     user_name : str
-        The name of the bot, with a default value of "Sons of Valour".
+        The name of the bot, with a default value of "Scrim Bot".
     app_dir : pathlib.Path
         The application directory path.
 
