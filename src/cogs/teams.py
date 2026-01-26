@@ -38,53 +38,10 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from models import BotAdminConfig, Team, User, TeamMembership, League, LeagueMembership  # pylint: disable=import-error
+from models import Team, User, TeamMembership, League, LeagueMembership  # pylint: disable=import-error
 
 if TYPE_CHECKING:
     from utils.discord_bot import DiscordBot  # pylint: disable=import-error,no-name-in-module
-
-
-async def is_owner_or_admin_or_captain(bot: DiscordBot, context: Context, team: Team, requester_user_id: int) -> bool:
-    """
-    Check if user is bot owner, admin, or team captain.
-
-    Parameters
-    ----------
-    bot : DiscordBot
-        The bot instance.
-    context : Context
-        The command context.
-    team : Team
-        The team to check captaincy for.
-    requester_user_id : int
-        Database ID of the requesting user.
-
-    Returns
-    -------
-    bool
-        True if user is owner, admin, or captain.
-    """
-    # Check if user is team owner
-    if team.owner_id == requester_user_id:
-        return True
-
-    # Check if user is bot owner
-    if await context.bot.is_owner(context.author):
-        return True
-
-    # Check if user is in admins table
-    admin_config = BotAdminConfig.get_by_user_id(bot.database, str(context.author.id))
-    if admin_config and admin_config.admin:
-        return True
-
-    # Check if user has any admin roles (if in a guild)
-    if context.guild and hasattr(context.author, "roles"):
-        for role in context.author.roles:  # type: ignore[attr-defined]
-            role_config = BotAdminConfig.get_by_server_and_role(bot.database, str(context.guild.id), str(role.id))
-            if role_config and role_config.admin:
-                return True
-
-    return False
 
 
 class TeamInviteView(discord.ui.View):
@@ -833,7 +790,7 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Check if requester is the team captain, owner, or admin
-            if not await is_owner_or_admin_or_captain(self.bot, context, team, requester.id):
+            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
                 await context.send("❌ Only the team captain (or bot owner/admin) can invite members.")
                 return
 
@@ -935,7 +892,7 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Check if requester is the team captain, owner, or admin
-            if not await is_owner_or_admin_or_captain(self.bot, context, team, requester.id):
+            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
                 await context.send("❌ Only the team captain (or bot owner/admin) can edit team details.")
                 return
 
@@ -1095,7 +1052,7 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Check if requester is the team captain, owner, or admin
-            if not await is_owner_or_admin_or_captain(self.bot, context, team, requester.id):
+            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
                 await context.send("❌ Only the team captain (or bot owner/admin) can remove members.")
                 return
 
@@ -1185,7 +1142,7 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Check if requester is the team captain, owner, or admin
-            if not await is_owner_or_admin_or_captain(self.bot, context, team, requester.id):
+            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
                 await context.send("❌ Only the team captain (or bot owner/admin) can transfer captaincy.")
                 return
 
