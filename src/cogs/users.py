@@ -31,6 +31,7 @@ setup(bot)
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 import discord
@@ -185,7 +186,16 @@ class UserManagement(commands.Cog, name="User Management"):
             embed.add_field(name="Discord ID", value=db_user.discord_id, inline=True)
             embed.add_field(name="Display Name", value=db_user.display_name if db_user.display_name else "None", inline=True)
             embed.add_field(name="Teams", value=teams_text, inline=False)
-            embed.add_field(name="Created Date", value=db_user.created_date.strftime("%Y-%m-%d %H:%M:%S"), inline=False)
+
+            # Parse created_date from string to datetime and format it
+            created_date_str = str(db_user.created_date)
+            try:
+                created_dt = datetime.fromisoformat(created_date_str)
+                formatted_date = created_dt.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, AttributeError):
+                formatted_date = created_date_str
+
+            embed.add_field(name="Created Date", value=formatted_date, inline=False)
             embed.set_footer(text=f"Searched by {context.author.name}")
 
             await context.send(embed=embed)
