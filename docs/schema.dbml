@@ -1,0 +1,139 @@
+// Scrim Bot Database Schema
+// Generated from SQLite schema in src/utils/database.py
+
+Table logs {
+  log_id integer [pk, increment, note: 'Primary key']
+  timestamp timestamp [default: `CURRENT_TIMESTAMP`, note: 'Log entry timestamp']
+  level text [not null, note: 'Log level (DEBUG, INFO, WARNING, ERROR, etc.)']
+  logger_name text [not null, note: 'Name of the logger']
+  message text [not null, note: 'Log message']
+  module text [note: 'Module where log was generated']
+  function text [note: 'Function where log was generated']
+  line_number integer [note: 'Line number where log was generated']
+}
+
+Table games {
+  id integer [pk, increment, note: 'Primary key']
+  name text [not null, note: 'Game name']
+  series text [note: 'Game series (e.g., Call of Duty, Halo)']
+}
+
+Table maps {
+  id integer [pk, increment, note: 'Primary key']
+  name text [not null, note: 'Map name']
+  mode text [not null, note: 'Game mode for this map']
+  experience_code text [note: 'Experience code for custom games']
+  game_id integer [not null, ref: > games.id, note: 'Reference to games table']
+}
+
+Table match_formats {
+  id integer [pk, increment, note: 'Primary key']
+  max_players integer [not null, note: 'Maximum players per team']
+  match_count integer [not null, note: 'Number of matches in format']
+}
+
+Table permitted_maps {
+  match_format_id integer [ref: > match_formats.id, note: 'Reference to match_formats table']
+  map_id integer [ref: > maps.id, note: 'Reference to maps table']
+
+  Indexes {
+    (match_format_id, map_id) [pk, note: 'Composite primary key']
+  }
+}
+
+Table users {
+  id integer [pk, increment, note: 'Primary key']
+  discord_id text [not null, note: 'Discord user ID (snowflake)']
+  display_name text [note: 'User display name']
+  created_date timestamp [default: `CURRENT_TIMESTAMP`, note: 'Account creation date']
+}
+
+Table teams {
+  id integer [pk, increment, note: 'Primary key']
+  name text [not null, note: 'Full team name']
+  tag text [not null, note: 'Team shorthand/tag']
+  owner_id integer [not null, ref: > users.id, note: 'Reference to users table (team owner)']
+  created_at timestamp [default: `CURRENT_TIMESTAMP`, note: 'Team creation timestamp']
+  created_by integer [not null, ref: > users.id, note: 'Reference to users table (creator)']
+  discord_server text [not null, note: 'Discord server ID (snowflake)']
+}
+
+Table leagues {
+  id integer [pk, increment, note: 'Primary key']
+  name text [not null, note: 'League name']
+  game_id integer [not null, ref: > games.id, note: 'Reference to games table']
+  match_format integer [not null, ref: > match_formats.id, note: 'Reference to match_formats table']
+  discord_server text [note: 'Discord server ID (snowflake)']
+  created_date timestamp [default: `CURRENT_TIMESTAMP`, note: 'League creation date']
+  created_by integer [not null, ref: > users.id, note: 'Reference to users table (creator)']
+  updated_date timestamp [note: 'Last update timestamp']
+  updated_by integer [ref: > users.id, note: 'Reference to users table (last updater)']
+}
+
+Table team_membership {
+  user_id integer [ref: > users.id, note: 'Reference to users table']
+  team_id integer [ref: > teams.id, note: 'Reference to teams table']
+  captain integer [default: 0, note: 'Is user a captain (0=false, 1=true)']
+  joined_date timestamp [default: `CURRENT_TIMESTAMP`, note: 'Date user joined team']
+  updated_date timestamp [note: 'Last update timestamp']
+
+  Indexes {
+    (user_id, team_id) [pk, note: 'Composite primary key']
+  }
+}
+
+Table league_membership {
+  league_id integer [ref: > leagues.id, note: 'Reference to leagues table']
+  team_id integer [ref: > teams.id, note: 'Reference to teams table']
+  joined_date timestamp [default: `CURRENT_TIMESTAMP`, note: 'Date team joined league']
+  joined_by integer [not null, ref: > users.id, note: 'Reference to users table (who added team)']
+
+  Indexes {
+    (league_id, team_id) [pk, note: 'Composite primary key']
+  }
+}
+
+Table matches {
+  id integer [pk, increment, note: 'Primary key']
+  league_id integer [not null, ref: > leagues.id, note: 'Reference to leagues table']
+  challenging_team integer [not null, ref: > teams.id, note: 'Team issuing the challenge']
+  defending_team integer [not null, ref: > teams.id, note: 'Team receiving the challenge']
+  issued_date timestamp [default: `CURRENT_TIMESTAMP`, note: 'Challenge issued date']
+  issued_by integer [not null, ref: > users.id, note: 'User who issued challenge']
+  match_date timestamp [not null, note: 'Scheduled match date/time']
+  winning_team integer [ref: > teams.id, note: 'Reference to winning team']
+  match_accepted integer [default: 0, note: 'Has match been accepted (0=false, 1=true)']
+  match_cancelled integer [default: 0, note: 'Has match been cancelled (0=false, 1=true)']
+}
+
+Table match_results {
+  match_id integer [ref: > matches.id, note: 'Reference to matches table']
+  round integer [note: 'Round number in match']
+  map_id integer [not null, ref: > maps.id, note: 'Map played in this round']
+  challenging_team_score integer [not null, note: 'Challenging team score']
+  defending_team_score integer [not null, note: 'Defending team score']
+  winning_team integer [not null, ref: > teams.id, note: 'Round winning team']
+
+  Indexes {
+    (match_id, round) [pk, note: 'Composite primary key']
+  }
+}
+
+Table admins {
+  id integer [pk, increment, note: 'Primary key']
+  discord_user_id text [unique, ref: > users.discord_id, note: 'Discord user ID for user-scoped admin']
+  discord_server_id text [note: 'Discord server ID for role-scoped admin']
+  discord_role_id text [note: 'Discord role ID for role-scoped admin']
+  scope text [not null, note: 'Admin scope: user or role']
+  admin integer [not null, default: 0, note: 'Has admin privileges (0=false, 1=true)']
+  created_date timestamp [default: `CURRENT_TIMESTAMP`, note: 'Admin entry creation date']
+  created_by integer [not null, ref: > users.id, note: 'User who created this admin entry']
+  updated_date timestamp [note: 'Last update timestamp']
+  updated_by integer [ref: > users.id, note: 'User who last updated this entry']
+
+  Indexes {
+    (discord_server_id, discord_role_id) [unique, note: 'Unique constraint for server+role combination']
+  }
+
+  Note: 'Admin configuration - supports user-scoped and role-scoped permissions. Scope must be either "user" or "role".'
+}
