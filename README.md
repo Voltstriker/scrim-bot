@@ -35,60 +35,60 @@ The following commands are available in the bot:
 
 ### General Commands
 
-| Command           | Parameters              | Scoped User | Description                                                                     |
-| ----------------- | ----------------------- | ----------- | ------------------------------------------------------------------------------- |
-| `/info`           | None                    | All Users   | Display information about the bot including server count and latency            |
-| `/displayname`    | `name`                  | All Users   | Set your display name in the bot (used for team memberships and other displays) |
-| `/ping`           | None                    | Bot Owner   | Test the bot's responsiveness and display latency                               |
-| `/sync`           | `scope` (global\|guild) | Bot Owner   | Synchronise slash commands either globally or to the current guild              |
-| `/unsync`         | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild          |
-| `/database reset` | None                    | Bot Owner   | Reset all database tables with confirmation (ephemeral, preserves logs)         |
+| Command           | Scoped User | Description                                                                     |
+| ----------------- | ----------- | ------------------------------------------------------------------------------- |
+| `/info`           | All Users   | Display information about the bot including server count and latency            |
+| `/displayname`    | All Users   | Set your display name in the bot (used for team memberships and other displays) |
+| `/ping`           | Bot Owner   | Test the bot's responsiveness and display latency                               |
+| `/sync`           | Bot Owner   | Synchronise slash commands either globally or to the current guild              |
+| `/unsync`         | Bot Owner   | Unsynchronise slash commands either globally or from the current guild          |
+| `/database reset` | Bot Owner   | Truncate and recreate all database tables (except logs)                         |
 
 ### Admin Management Commands
 
-| Command         | Parameters            | Scoped User | Description                                                                                    |
-| --------------- | --------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
-| `/admin add`    | `target` (user\|role) | Bot Owner   | Add a user or role as a bot administrator (users and roles can execute restricted bot actions) |
-| `/admin remove` | `target` (user\|role) | Bot Owner   | Remove a user or role from bot administrators                                                  |
-| `/admins`       | None                  | Bot Owner   | List all bot administrators (both users and roles)                                             |
+| Command         | Scoped User | Description                                                                                    |
+| --------------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| `/admin add`    | Bot Owner   | Add a user or role as a bot administrator (users and roles can execute restricted bot actions) |
+| `/admin remove` | Bot Owner   | Remove a user or role from bot administrators                                                  |
+| `/admins`       | Bot Owner   | List all bot administrators (both users and roles)                                             |
 
 ### Game Management Commands
 
-| Command         | Parameters                             | Scoped User | Description                             |
-| --------------- | -------------------------------------- | ----------- | --------------------------------------- |
-| `/games list`   | None                                   | Admin       | List all games in the database          |
-| `/games add`    | `name`, `series` (optional)            | Admin       | Add a new game to the database          |
-| `/games update` | `game_id`, `name`, `series` (optional) | Admin       | Update an existing game in the database |
-| `/games delete` | `game_id`                              | Admin       | Delete a game from the database         |
+| Command         | Scoped User | Description                             |
+| --------------- | ----------- | --------------------------------------- |
+| `/games list`   | Admin       | List all games in the database          |
+| `/games add`    | Admin       | Add a new game to the database          |
+| `/games update` | Admin       | Update an existing game in the database |
+| `/games delete` | Admin       | Delete a game from the database         |
 
 ### Map Management Commands
 
-| Command       | Parameters                                                          | Scoped User | Description                                     |
-| ------------- | ------------------------------------------------------------------- | ----------- | ----------------------------------------------- |
-| `/maps`       | `game` (optional, autocomplete)                                     | All Users   | List all maps, optionally filtered by game name |
-| `/map add`    | `name`, `mode`, `game` (autocomplete), `experience_code` (optional) | Admin       | Add a new map to the database                   |
-| `/map edit`   | `map_id`, `name`, `mode`, `experience_code` (all optional)          | Admin       | Update an existing map in the database          |
-| `/map remove` | `map_id`                                                            | Admin       | Delete a map from the database                  |
+| Command       | Scoped User | Description                                     |
+| ------------- | ----------- | ----------------------------------------------- |
+| `/maps`       | All Users   | List all maps, optionally filtered by game name |
+| `/map add`    | Admin       | Add a new map to the database                   |
+| `/map edit`   | Admin       | Update an existing map in the database          |
+| `/map remove` | Admin       | Delete a map from the database                  |
 
 ### User Management Commands
 
-| Command         | Parameters | Scoped User | Description                                                |
-| --------------- | ---------- | ----------- | ---------------------------------------------------------- |
-| `/users list`   | None       | Admin       | List all users in the database with their team memberships |
-| `/users search` | `user`     | All Users   | Search for a user by Discord tag                           |
+| Command         | Scoped User | Description                                                |
+| --------------- | ----------- | ---------------------------------------------------------- |
+| `/users list`   | Admin       | List all users in the database with their team memberships |
+| `/users search` | All Users   | Search for a user by Discord tag                           |
 
 ### Team Management Commands
 
-| Command         | Parameters                                   | Scoped User  | Description                                                                                |
-| --------------- | -------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------ |
-| `/teams`        | `league`, `user`, `search` (all optional)    | All Users    | List teams on the server with optional filters, or list your teams when used in DMs        |
-| `/team create`  | `name`, `tag`                                | All Users    | Create a new team with the specified name and tag                                          |
-| `/team members` | `team_id`                                    | All Users    | List all members of a team (displays Owner, Captains, and Members sections)                |
-| `/team invite`  | `team_id`, `user`                            | Team Captain | Invite a user to join your team by team ID (captain only, sends DM with Accept/Decline)    |
-| `/team edit`    | `team_id`, `name`, `tag` (name/tag optional) | Team Captain | Edit your team's name or tag by team ID (captain only, at least one parameter required)    |
-| `/team leave`   | `team_id`                                    | All Users    | Leave a team by team ID (captains must transfer captaincy first)                           |
-| `/team remove`  | `team_id`, `user`                            | Team Captain | Remove a member from your team by team ID (captain only, cannot remove captain)            |
-| `/team owner`   | `team_id`, `user`                            | Team Captain | Transfer captaincy to another team member by team ID (captain only, requires confirmation) |
+| Command         | Scoped User  | Description                                                                         |
+| --------------- | ------------ | ----------------------------------------------------------------------------------- |
+| `/teams`        | All Users    | List teams on the server with optional filters, or list your teams when used in DMs |
+| `/team create`  | All Users    | Create a new team with the specified name and tag                                   |
+| `/team members` | All Users    | List all members of a team                                                          |
+| `/team invite`  | Team Captain | Invite a user to join your team                                                     |
+| `/team edit`    | Team Captain | Edit your team's name or tag                                                        |
+| `/team leave`   | All Users    | Leave a team the user is a member of                                                |
+| `/team remove`  | Team Captain | Remove a member from your team by team ID                                           |
+| `/team owner`   | Team Owner   | Transfer ownership to another team member by team ID                                |
 
 ## Issues or Questions
 
