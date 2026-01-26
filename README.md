@@ -33,6 +33,8 @@ For development with additional tools (Black, Pylint, Pyright):
 
 The following commands are available in the bot:
 
+### General Commands
+
 | Command   | Parameters              | Scoped User | Description                                                            |
 | --------- | ----------------------- | ----------- | ---------------------------------------------------------------------- |
 | `/info`   | None                    | Bot Owner   | Display information about the bot including server count and latency   |
@@ -40,7 +42,18 @@ The following commands are available in the bot:
 | `/sync`   | `scope` (global\|guild) | Bot Owner   | Synchronise slash commands either globally or to the current guild     |
 | `/unsync` | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild |
 
-> **Note**: All commands currently require bot owner permissions. Additional team management and match commands will be added in future updates.
+### Team Management Commands
+
+| Command         | Parameters                                   | Scoped User | Description                                                                                |
+| --------------- | -------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| `/teams`        | `league`, `user`, `search` (all optional)    | All Users   | List teams on the server with optional filters, or list your teams when used in DMs        |
+| `/team create`  | `name`, `tag`                                | All Users   | Create a new team with the specified name and tag                                          |
+| `/team members` | `team_id`                                    | All Users   | List all members of a team by team ID                                                      |
+| `/team invite`  | `team_id`, `user`                            | Captain     | Invite a user to join your team by team ID (captain only, sends DM with Accept/Decline)    |
+| `/team edit`    | `team_id`, `name`, `tag` (name/tag optional) | Captain     | Edit your team's name or tag by team ID (captain only, at least one parameter required)    |
+| `/team leave`   | `team_id`                                    | All Users   | Leave a team by team ID (captains must transfer captaincy first)                           |
+| `/team remove`  | `team_id`, `user`                            | Captain     | Remove a member from your team by team ID (captain only, cannot remove captain)            |
+| `/team owner`   | `team_id`, `user`                            | Captain     | Transfer captaincy to another team member by team ID (captain only, requires confirmation) |
 
 ## Issues or Questions
 
