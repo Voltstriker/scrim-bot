@@ -134,7 +134,7 @@ class GameManagement(commands.Cog, name="Game Management"):
             embed.add_field(name="Series", value=series if series else "None", inline=True)
             embed.set_footer(text=f"Added by {context.author.name}")
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error adding game: %s", e)  # type: ignore[attr-defined]
@@ -180,7 +180,7 @@ class GameManagement(commands.Cog, name="Game Management"):
             else:
                 embed.set_footer(text=f"Requested by {context.author.name}")
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error listing games: %s", e)  # type: ignore[attr-defined]
@@ -238,7 +238,7 @@ class GameManagement(commands.Cog, name="Game Management"):
             embed.add_field(name="Series", value=game.series if game.series else "None", inline=True)
             embed.set_footer(text=f"Updated by {context.author.name}")
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error updating game: %s", e)  # type: ignore[attr-defined]
@@ -284,7 +284,7 @@ class GameManagement(commands.Cog, name="Game Management"):
                 embed.add_field(name="Series", value=game_series if game_series else "None", inline=True)
                 embed.set_footer(text=f"Deleted by {context.author.name}")
 
-                await context.send(embed=embed)
+                await context.send(embed=embed, ephemeral=True)
             else:
                 await context.send(f"❌ Failed to delete game with ID {game_id}.")
 
@@ -554,7 +554,7 @@ class MapManagement(commands.Cog, name="Map Management"):
             embed.add_field(name="Experience Code", value=experience_code if experience_code else "None", inline=True)
             embed.set_footer(text=f"Added by {context.author.name}")
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error adding map: %s", e)  # type: ignore[attr-defined]
@@ -632,7 +632,7 @@ class MapManagement(commands.Cog, name="Map Management"):
             embed.add_field(name="Experience Code", value=map_obj.experience_code if map_obj.experience_code else "None", inline=True)
             embed.set_footer(text=f"Updated by {context.author.name}")
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error updating map: %s", e)  # type: ignore[attr-defined]
@@ -689,7 +689,7 @@ class MapManagement(commands.Cog, name="Map Management"):
                 embed.add_field(name="Game", value=game_name, inline=True)
                 embed.set_footer(text=f"Deleted by {context.author.name}")
 
-                await context.send(embed=embed)
+                await context.send(embed=embed, ephemeral=True)
             else:
                 await context.send(f"❌ Failed to delete map with ID {map_id_int}.")
 

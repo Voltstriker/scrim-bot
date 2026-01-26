@@ -1352,7 +1352,7 @@ class Teams(commands.Cog, name="Teams"):
             # Create the view with Approve/Decline buttons
             view = TeamOwnerTransferView(self.bot, team_obj.id, requester.id, new_owner.id, context)
 
-            await context.send(embed=embed, view=view)
+            await context.send(embed=embed, view=view, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error initiating ownership transfer: %s", e)

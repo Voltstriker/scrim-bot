@@ -138,7 +138,7 @@ class Utils(commands.Cog, name="Utils"):
             The context in which the command was invoked.
         """
         latency = round(self.bot.latency * 1000)
-        await context.send(f"🏓 Pong! Latency: {latency}ms")
+        await context.send(f"🏓 Pong! Latency: {latency}ms", ephemeral=True)
 
     @commands.hybrid_command(name="sync", description="Synchronises the slash commands.")
     @app_commands.describe(scope="The scope of the sync. Can be `global` or `guild`")
@@ -186,7 +186,7 @@ class Utils(commands.Cog, name="Utils"):
             await message.edit(embed=embed)
             return
         embed = discord.Embed(description="The scope must be `global` or `guild`.", color=0xE02B2B)
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="unsync", description="Unsynchronises the slash commands.")
     @app_commands.describe(scope="The scope of the sync. Can be `global`, `current_guild` or `guild`")
@@ -235,7 +235,7 @@ class Utils(commands.Cog, name="Utils"):
             await message.edit(embed=embed)
             return
         embed = discord.Embed(description="The scope must be `global` or `guild`.", color=0xE02B2B)
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_group(name="database", description="Database management commands")
     @commands.is_owner()
@@ -249,7 +249,7 @@ class Utils(commands.Cog, name="Utils"):
             The context in which the command was invoked.
         """
         if context.invoked_subcommand is None:
-            await context.send("Please specify a subcommand: reset")
+            await context.send("Please specify a subcommand: reset", ephemeral=True)
 
     @database.command(name="reset", description="Reset all database tables (requires confirmation)")
     @commands.is_owner()

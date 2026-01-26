@@ -138,7 +138,7 @@ class UserManagement(commands.Cog, name="User Management"):
             else:
                 embed.set_footer(text=f"Requested by {context.author.name}")
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error listing users: %s", e)  # type: ignore[attr-defined]

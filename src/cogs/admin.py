@@ -217,7 +217,7 @@ class AdminManagement(commands.Cog, name="Admin Management"):
                 await context.send("❌ Target must be a user or role.")
                 return
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except ValueError as ve:
             self.bot.logger.error("Error adding admin: %s", ve)  # type: ignore[attr-defined]
@@ -291,7 +291,7 @@ class AdminManagement(commands.Cog, name="Admin Management"):
                 await context.send("❌ Target must be a user or role.")
                 return
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error removing admin: %s", e)  # type: ignore[attr-defined]
@@ -341,7 +341,7 @@ class AdminManagement(commands.Cog, name="Admin Management"):
 
             embed.set_footer(text=f"Requested by {context.author.name}")
 
-            await context.send(embed=embed)
+            await context.send(embed=embed, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error listing admins: %s", e)  # type: ignore[attr-defined]

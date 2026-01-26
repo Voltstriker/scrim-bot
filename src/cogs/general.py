@@ -91,7 +91,7 @@ class General(commands.Cog, name="General"):
         embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
         embed.add_field(name="Latency", value=f"{round(self.bot.latency * 1000)}ms", inline=True)
         embed.set_footer(text=f"Requested by {context.author.name}")
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
     @commands.hybrid_command(name="displayname", description="Set your display name in the bot")
     async def displayname(self, context: Context, *, name: str) -> None:
@@ -135,7 +135,7 @@ class General(commands.Cog, name="General"):
             )
 
         embed.set_footer(text=f"Requested by {context.author.name}")
-        await context.send(embed=embed)
+        await context.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot: DiscordBot) -> None:
