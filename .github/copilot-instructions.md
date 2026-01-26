@@ -482,9 +482,159 @@ with Database(database_path=db_path, logger=logger) as db:
     user_teams = TeamMembership.get_by_user(db, user_id)
 ```
 
-### Checking Team Captain Status
+## Permission and Authorization Patterns
 
-When implementing commands that require captain permissions, check if the user is a team captain before allowing actions.
+### Bot Owner and Admin Privileges
+
+The bot implements a hierarchical permission system where bot owners and administrators can execute restricted commands:
+
+- **Bot Owner**: The Discord user who owns the bot application (automatically has full access)
+- **Administrators**: Users or roles designated as admins through the `admins` database table
+  - User-scoped admins: Specific Discord users granted admin privileges
+  - Role-scoped admins: Discord roles granted admin privileges (any user with the role has admin access)
+
+**CRITICAL**: Bot owners and administrators can execute ANY non-public commands, including those typically scoped to team captains. This allows for administrative oversight and intervention when needed.
+
+### Implementing Permission Checks
+
+When implementing commands with restricted access, use the following patterns:
+
+#### Owner/Admin Only Commands
+
+For commands that should only be accessible to bot owners or admins (e.g., game management, map management, admin management):
+
+```python
+async def is_owner_or_admin(context: Context) -> bool:
+    """
+    Check if user is bot owner or admin.
+
+    Parameters
+    ----------
+    context : Context
+        The command context.
+
+    Returns
+    -------
+    bool
+        True if user is owner or admin.
+
+    Raises
+    ------
+    commands.CheckFailure
+        If user is not authorized.
+    """
+    # pylint: disable=import-outside-toplevel,import-error,no-name-in-module
+    from models import BotAdminConfig
+
+    # Check if user is bot owner
+    if await context.bot.is_owner(context.author):
+        return True
+
+    # Check if user is in admins table
+    admin_config = BotAdminConfig.get_by_user_id(context.bot.database, str(context.author.id))
+    if admin_config and admin_config.admin:
+        return True
+
+    # Check if user has any admin roles (if in a guild)
+    if context.guild and hasattr(context.author, "roles"):
+        for role in context.author.roles:  # type: ignore[attr-defined]
+            role_config = BotAdminConfig.get_by_server_and_role(
+                context.bot.database, str(context.guild.id), str(role.id)
+            )
+            if role_config and role_config.admin:
+                return True
+
+    raise commands.CheckFailure("❌ This command requires bot owner or admin privileges.")
+
+# Apply to command
+@commands.hybrid_command()
+@commands.check(is_owner_or_admin)
+async def restricted_command(self, context: Context) -> None:
+    # Command implementation
+    pass
+```
+
+#### Captain/Owner/Admin Commands
+
+For commands that should be accessible to team captains OR bot owners/admins (e.g., team management):
+
+```python
+async def is_owner_or_admin_or_captain(
+    bot: DiscordBot, context: Context, team: Team, requester_user_id: int
+) -> bool:
+    """
+    Check if user is bot owner, admin, or team captain.
+
+    Parameters
+    ----------
+    bot : DiscordBot
+        The bot instance.
+    context : Context
+        The command context.
+    team : Team
+        The team to check captaincy for.
+    requester_user_id : int
+        Database ID of the requesting user.
+
+    Returns
+    -------
+    bool
+        True if user is owner, admin, or captain.
+    """
+    # Check if user is team captain
+    if team.captain_id == requester_user_id:
+        return True
+
+    # Check if user is bot owner
+    if await context.bot.is_owner(context.author):
+        return True
+
+    # Check if user is admin (user-scoped or role-scoped)
+    admin_config = BotAdminConfig.get_by_user_id(bot.database, str(context.author.id))
+    if admin_config and admin_config.admin:
+        return True
+
+    if context.guild and hasattr(context.author, "roles"):
+        for role in context.author.roles:  # type: ignore[attr-defined]
+            role_config = BotAdminConfig.get_by_server_and_role(
+                bot.database, str(context.guild.id), str(role.id)
+            )
+            if role_config and role_config.admin:
+                return True
+
+    return False
+
+# Use in command
+@commands.hybrid_command()
+async def team_command(self, context: Context, team_id: int) -> None:
+    team = Team.get_by_id(self.bot.database, team_id)
+    requester = User.get_by_discord_id(self.bot.database, str(context.author.id))
+
+    # Check authorization
+    if not await is_owner_or_admin_or_captain(self.bot, context, team, requester.id):
+        await context.send("❌ Only the team captain (or bot owner/admin) can perform this action.")
+        return
+
+    # Command implementation
+    pass
+```
+
+### Permission Hierarchy
+
+The permission hierarchy is as follows (from highest to lowest):
+
+1. **Bot Owner**: Can execute all commands without restriction
+2. **Administrators**: Can execute all non-public commands (including captain-scoped commands)
+3. **Team Captains**: Can execute team-specific commands for their own teams
+4. **All Users**: Can execute public commands
+
+**Important Notes:**
+
+- Bot owners and admins can bypass captain-only restrictions for administrative purposes
+- When implementing new commands, always consider which permission level is appropriate
+- User-facing error messages should indicate when owner/admin privileges are accepted: "Only the team captain (or bot owner/admin) can..."
+- Admin privileges are checked in this order: bot owner → user-scoped admin → role-scoped admin
+- The bot owner cannot be removed from the admins table (protection implemented in `/admin remove`)
 
 ### League Validation
 

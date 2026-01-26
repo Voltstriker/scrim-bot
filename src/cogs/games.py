@@ -39,10 +39,58 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from models import Game, Map  # pylint: disable=import-error
+from models import BotAdminConfig, Game, Map  # pylint: disable=import-error
 
 if TYPE_CHECKING:
     from utils.discord_bot import DiscordBot  # pylint: disable=import-error,no-name-in-module
+
+
+def is_owner_or_admin():
+    """
+    Check if user is bot owner or an admin.
+
+    Returns
+    -------
+    commands.check
+        A check decorator that verifies if the user is the bot owner or has admin privileges.
+    """
+
+    async def predicate(context: Context) -> bool:
+        """
+        Predicate function that checks if user has owner or admin privileges.
+
+        Parameters
+        ----------
+        context : Context
+            The command context.
+
+        Returns
+        -------
+        bool
+            True if user is owner or admin, False otherwise.
+        """
+        # Check if user is bot owner
+        if await context.bot.is_owner(context.author):
+            return True
+
+        # Check if user is in admins table
+        from utils.discord_bot import DiscordBot  # pylint: disable=import-outside-toplevel,import-error,no-name-in-module
+
+        bot: DiscordBot = context.bot  # type: ignore[assignment]
+        admin_config = BotAdminConfig.get_by_user_id(bot.database, str(context.author.id))
+        if admin_config and admin_config.admin:
+            return True
+
+        # Check if user has any admin roles (if in a guild)
+        if context.guild and hasattr(context.author, "roles"):
+            for role in context.author.roles:  # type: ignore[attr-defined]
+                role_config = BotAdminConfig.get_by_server_and_role(bot.database, str(context.guild.id), str(role.id))
+                if role_config and role_config.admin:
+                    return True
+
+        return False
+
+    return commands.check(predicate)
 
 
 class GameManagement(commands.Cog, name="Game Management"):
@@ -96,7 +144,7 @@ class GameManagement(commands.Cog, name="Game Management"):
             await context.send("Please specify a subcommand: add, list, update, or delete.")
 
     @games.command(name="add", description="Add a new game to the database")
-    @commands.is_owner()
+    @is_owner_or_admin()
     async def games_add(self, context: Context, name: str, series: Optional[str] = None) -> None:
         """
         Add a new game to the database.
@@ -141,6 +189,7 @@ class GameManagement(commands.Cog, name="Game Management"):
             await context.send(f"❌ An error occurred while adding the game: {e}")
 
     @games.command(name="list", description="List all games in the database")
+    @is_owner_or_admin()
     async def games_list(self, context: Context) -> None:
         """
         List all games in the database.
@@ -186,7 +235,7 @@ class GameManagement(commands.Cog, name="Game Management"):
             await context.send(f"❌ An error occurred while listing games: {e}")
 
     @games.command(name="update", description="Update an existing game in the database")
-    @commands.is_owner()
+    @is_owner_or_admin()
     async def games_update(self, context: Context, game_id: int, name: Optional[str] = None, series: Optional[str] = None) -> None:
         """
         Update an existing game in the database.
@@ -244,7 +293,7 @@ class GameManagement(commands.Cog, name="Game Management"):
             await context.send(f"❌ An error occurred while updating the game: {e}")
 
     @games.command(name="delete", description="Delete a game from the database")
-    @commands.is_owner()
+    @is_owner_or_admin()
     async def games_delete(self, context: Context, game_id: int) -> None:
         """
         Delete a game from the database.
@@ -500,7 +549,7 @@ class MapManagement(commands.Cog, name="Map Management"):
             await context.send("Please specify a subcommand: add, edit, or remove.")
 
     @map.command(name="add", description="Add a new map to the database")
-    @commands.is_owner()
+    @is_owner_or_admin()
     @app_commands.autocomplete(game=game_autocomplete)
     async def map_add(self, context: Context, name: str, mode: str, game: str, experience_code: Optional[str] = None) -> None:
         """
@@ -560,7 +609,7 @@ class MapManagement(commands.Cog, name="Map Management"):
             await context.send(f"❌ An error occurred while adding the map: {e}")
 
     @map.command(name="edit", description="Update an existing map in the database")
-    @commands.is_owner()
+    @is_owner_or_admin()
     @app_commands.autocomplete(selected_map=map_autocomplete)
     async def map_edit(
         self,
@@ -638,7 +687,7 @@ class MapManagement(commands.Cog, name="Map Management"):
             await context.send(f"❌ An error occurred while updating the map: {e}")
 
     @map.command(name="remove", description="Delete a map from the database")
-    @commands.is_owner()
+    @is_owner_or_admin()
     @app_commands.autocomplete(selected_map=map_autocomplete)
     async def map_remove(self, context: Context, selected_map: str) -> None:
         """
