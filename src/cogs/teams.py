@@ -116,7 +116,7 @@ class TeamInviteView(discord.ui.View):
                     return
 
             # Add user to team
-            membership = TeamMembership(user_id=self.invited_user_id, team_id=team.id, joined_date=datetime.now(), updated_date=None)
+            membership = TeamMembership(user_id=self.invited_user_id, team_id=team.id, captain=False, joined_date=datetime.now(), updated_date=None)
             membership.save(self.bot.database)
 
             # Update the original message
@@ -652,8 +652,8 @@ class Teams(commands.Cog, name="Teams"):
             )
             team_id = team.save(self.bot.database)
 
-            # Add creator as team member
-            membership = TeamMembership(user_id=db_user.id, team_id=team_id, joined_date=datetime.now(), updated_date=None)
+            # Add creator as team member (and captain)
+            membership = TeamMembership(user_id=db_user.id, team_id=team_id, captain=True, joined_date=datetime.now(), updated_date=None)
             membership.save(self.bot.database)
 
             # Create success embed

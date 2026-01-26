@@ -8,7 +8,7 @@ offering type safety and convenient data access throughout the bot.
 from .game import Game, Map, MatchFormat, PermittedMap
 from .league import League, LeagueMembership
 from .match import Match, MatchResult
-from .team import Team, TeamMembership, TeamPermissionsRole, TeamPermissionsUser
+from .team import Team, TeamMembership
 from .user import User
 
 __all__ = [
@@ -22,7 +22,5 @@ __all__ = [
     "MatchResult",
     "Team",
     "TeamMembership",
-    "TeamPermissionsRole",
-    "TeamPermissionsUser",
     "User",
 ]

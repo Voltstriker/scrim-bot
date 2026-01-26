@@ -667,56 +667,12 @@ class Database:
             CREATE TABLE IF NOT EXISTS team_membership (
                 user_id INTEGER,
                 team_id INTEGER,
+                captain INTEGER DEFAULT 0,
                 joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_date TIMESTAMP,
                 PRIMARY KEY (user_id, team_id),
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (team_id) REFERENCES teams(id)
-            )
-            """
-        )
-
-        # Create team_permissions_users table (composite primary key)
-        self.execute(
-            """
-            CREATE TABLE IF NOT EXISTS team_permissions_users (
-                team_id INTEGER,
-                user_id INTEGER,
-                perm_edit_details INTEGER DEFAULT 0,
-                perm_edit_members INTEGER DEFAULT 0,
-                perm_join_leagues INTEGER DEFAULT 0,
-                perm_issue_matches INTEGER DEFAULT 0,
-                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_by INTEGER NOT NULL,
-                updated_date TIMESTAMP,
-                updated_by INTEGER,
-                PRIMARY KEY (team_id, user_id),
-                FOREIGN KEY (team_id) REFERENCES teams(id),
-                FOREIGN KEY (user_id) REFERENCES users(id),
-                FOREIGN KEY (created_by) REFERENCES users(id),
-                FOREIGN KEY (updated_by) REFERENCES users(id)
-            )
-            """
-        )
-
-        # Create team_permissions_roles table (composite primary key)
-        self.execute(
-            """
-            CREATE TABLE IF NOT EXISTS team_permissions_roles (
-                team_id INTEGER,
-                role_id TEXT NOT NULL,
-                perm_edit_details INTEGER DEFAULT 0,
-                perm_edit_members INTEGER DEFAULT 0,
-                perm_join_leagues INTEGER DEFAULT 0,
-                perm_issue_matches INTEGER DEFAULT 0,
-                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_by INTEGER NOT NULL,
-                updated_date TIMESTAMP,
-                updated_by INTEGER,
-                PRIMARY KEY (team_id, role_id),
-                FOREIGN KEY (team_id) REFERENCES teams(id),
-                FOREIGN KEY (created_by) REFERENCES users(id),
-                FOREIGN KEY (updated_by) REFERENCES users(id)
             )
             """
         )
