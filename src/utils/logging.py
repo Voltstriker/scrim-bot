@@ -184,11 +184,15 @@ class DatabaseHandler(logging.Handler):
         record : logging.LogRecord
             The log record to write to the database.
         """
+        # Skip database-related DEBUG logs to prevent recursion and lock contention
+        if record.levelno == logging.DEBUG and ("database" in record.name.lower() or "Executed query" in record.getMessage()):
+            return
+
         try:
             # Connect to database if not already connected
             if self.connection is None:
-                # Set a 5 second timeout to wait for database locks
-                self.connection = sqlite3.connect(self.database_path, timeout=5.0, check_same_thread=False)
+                # Set a 0.1 second timeout - if database is locked, skip the log entry
+                self.connection = sqlite3.connect(self.database_path, timeout=0.1, check_same_thread=False)
 
             cursor = self.connection.cursor()
 
