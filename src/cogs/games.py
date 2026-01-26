@@ -342,7 +342,9 @@ class MapManagement(commands.Cog, name="Map Management"):
         if context.invoked_subcommand is None:
             await context.send("Please specify a subcommand: list, add, edit, or remove.")
 
-    async def game_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]: # pylint: disable=unused-argument
+    async def game_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:  # pylint: disable=unused-argument
         """
         Autocomplete callback for game selection.
 
@@ -360,17 +362,13 @@ class MapManagement(commands.Cog, name="Map Management"):
         """
         games = Game.get_all(self.bot.database)
         # Filter games by current input (case-insensitive)
-        filtered_games = [
-            game for game in games
-            if current.lower() in game.name.lower()
-        ][:25]  # Discord limits autocomplete to 25 choices
+        filtered_games = [game for game in games if current.lower() in game.name.lower()][:25]  # Discord limits autocomplete to 25 choices
 
-        return [
-            app_commands.Choice(name=game.name, value=game.name)
-            for game in filtered_games
-        ]
+        return [app_commands.Choice(name=game.name, value=game.name) for game in filtered_games]
 
-    async def map_autocomplete(self, interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]: # pylint: disable=unused-argument
+    async def map_autocomplete(
+        self, interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:  # pylint: disable=unused-argument
         """
         Autocomplete callback for map selection.
 
@@ -504,9 +502,7 @@ class MapManagement(commands.Cog, name="Map Management"):
     @maps.command(name="add", description="Add a new map to the database")
     @commands.is_owner()
     @app_commands.autocomplete(game=game_autocomplete)
-    async def maps_add(
-        self, context: Context, name: str, mode: str, game: str, experience_code: Optional[str] = None
-    ) -> None:
+    async def maps_add(self, context: Context, name: str, mode: str, game: str, experience_code: Optional[str] = None) -> None:
         """
         Add a new map to the database.
 
