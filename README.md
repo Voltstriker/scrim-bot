@@ -74,7 +74,7 @@ The following commands are available in the bot:
 
 | Command         | Parameters | Scoped User | Description                                                |
 | --------------- | ---------- | ----------- | ---------------------------------------------------------- |
-| `/users list`   | None       | All Users   | List all users in the database with their team memberships |
+| `/users list`   | None       | Admin       | List all users in the database with their team memberships |
 | `/users search` | `user`     | All Users   | Search for a user by Discord tag                           |
 
 ### Team Management Commands

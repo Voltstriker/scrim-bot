@@ -91,6 +91,7 @@ class UserManagement(commands.Cog, name="User Management"):
             await context.send("Please specify a subcommand: list or search.")
 
     @users.command(name="list", description="List all users in the database")
+    @commands.check(lambda ctx: ctx.bot.is_owner_or_admin(ctx.author))
     async def users_list(self, context: Context) -> None:
         """
         List all users in the database with their team memberships.
