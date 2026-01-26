@@ -499,6 +499,44 @@ class Database:
         self.commit()
         self.logger.info("Table '%s' dropped successfully", table_name)
 
+    def drop_all_tables(self) -> int:
+        """
+        Drop all tables from the database (excluding SQLite system tables and logs table).
+
+        This method retrieves all user-created tables and drops them, except for the
+        logs table which is preserved to maintain logging functionality during the reset.
+        System tables (those starting with 'sqlite_') are also preserved.
+
+        Foreign key constraints are temporarily disabled during the operation to avoid
+        constraint violation errors when dropping tables with dependencies.
+
+        Returns:
+            int: Number of tables dropped.
+        """
+        # Temporarily disable foreign key constraints to avoid issues with table dependencies
+        self.execute("PRAGMA foreign_keys = OFF")
+        self.commit()
+
+        # Get list of all user tables (excluding logs table)
+        tables_query = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != 'logs'"
+        cursor = self.execute(tables_query)
+        tables = []
+
+        if cursor:
+            tables = [row[0] for row in cursor.fetchall()]
+
+            # Drop all tables
+            for table_name in tables:
+                self.drop_table(table_name, if_exists=True)
+
+            self.logger.info("Dropped %d table(s)", len(tables))
+
+        # Re-enable foreign key constraints
+        self.execute("PRAGMA foreign_keys = ON")
+        self.commit()
+
+        return len(tables)
+
     def initialise_schema(self) -> None:
         """
         Initialise the database schema with all required tables.
