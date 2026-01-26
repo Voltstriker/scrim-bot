@@ -329,21 +329,8 @@ class MapManagement(commands.Cog, name="Map Management"):
     ################################################
     # Map Management Commands
     ################################################
-    @commands.hybrid_group(name="maps", description="Manage maps in the database")
-    async def maps(self, context: Context) -> None:
-        """
-        Command group for managing maps.
-
-        Parameters
-        ----------
-        context : discord.ext.commands.Context
-            The context in which the command was invoked.
-        """
-        if context.invoked_subcommand is None:
-            await context.send("Please specify a subcommand: list, add, edit, or remove.")
-
     async def game_autocomplete(
-        self, interaction: discord.Interaction, current: str # pylint: disable=unused-argument
+        self, interaction: discord.Interaction, current: str  # pylint: disable=unused-argument
     ) -> list[app_commands.Choice[str]]:
         """
         Autocomplete callback for game selection.
@@ -367,7 +354,7 @@ class MapManagement(commands.Cog, name="Map Management"):
         return [app_commands.Choice(name=game.name, value=game.name) for game in filtered_games]
 
     async def map_autocomplete(
-        self, interaction: discord.Interaction, current: str # pylint: disable=unused-argument
+        self, interaction: discord.Interaction, current: str  # pylint: disable=unused-argument
     ) -> list[app_commands.Choice[str]]:
         """
         Autocomplete callback for map selection.
@@ -407,9 +394,9 @@ class MapManagement(commands.Cog, name="Map Management"):
 
         return choices
 
-    @maps.command(name="list", description="List all maps in the database")
+    @commands.hybrid_command(name="maps", description="List all maps in the database")
     @app_commands.autocomplete(game=game_autocomplete)
-    async def maps_list(self, context: Context, game: Optional[str] = None) -> None:
+    async def maps(self, context: Context, game: Optional[str] = None) -> None:
         """
         List all maps in the database, optionally filtered by game.
 
@@ -499,10 +486,23 @@ class MapManagement(commands.Cog, name="Map Management"):
             self.bot.logger.error("Error listing maps: %s", e)  # type: ignore[attr-defined]
             await context.send(f"❌ An error occurred while listing maps: {e}")
 
-    @maps.command(name="add", description="Add a new map to the database")
+    @commands.hybrid_group(name="map", description="Manage maps in the database")
+    async def map(self, context: Context) -> None:
+        """
+        Command group for managing maps.
+
+        Parameters
+        ----------
+        context : discord.ext.commands.Context
+            The context in which the command was invoked.
+        """
+        if context.invoked_subcommand is None:
+            await context.send("Please specify a subcommand: add, edit, or remove.")
+
+    @map.command(name="add", description="Add a new map to the database")
     @commands.is_owner()
     @app_commands.autocomplete(game=game_autocomplete)
-    async def maps_add(self, context: Context, name: str, mode: str, game: str, experience_code: Optional[str] = None) -> None:
+    async def map_add(self, context: Context, name: str, mode: str, game: str, experience_code: Optional[str] = None) -> None:
         """
         Add a new map to the database.
 
@@ -559,10 +559,10 @@ class MapManagement(commands.Cog, name="Map Management"):
             self.bot.logger.error("Error adding map: %s", e)  # type: ignore[attr-defined]
             await context.send(f"❌ An error occurred while adding the map: {e}")
 
-    @maps.command(name="edit", description="Update an existing map in the database")
+    @map.command(name="edit", description="Update an existing map in the database")
     @commands.is_owner()
     @app_commands.autocomplete(selected_map=map_autocomplete)
-    async def maps_edit(
+    async def map_edit(
         self,
         context: Context,
         selected_map: str,
@@ -637,10 +637,10 @@ class MapManagement(commands.Cog, name="Map Management"):
             self.bot.logger.error("Error updating map: %s", e)  # type: ignore[attr-defined]
             await context.send(f"❌ An error occurred while updating the map: {e}")
 
-    @maps.command(name="remove", description="Delete a map from the database")
+    @map.command(name="remove", description="Delete a map from the database")
     @commands.is_owner()
     @app_commands.autocomplete(selected_map=map_autocomplete)
-    async def maps_remove(self, context: Context, selected_map: str) -> None:
+    async def map_remove(self, context: Context, selected_map: str) -> None:
         """
         Delete a map from the database.
 

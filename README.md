@@ -55,12 +55,12 @@ The following commands are available in the bot:
 
 ### Map Management Commands
 
-| Command        | Parameters                                                          | Scoped User | Description                                     |
-| -------------- | ------------------------------------------------------------------- | ----------- | ----------------------------------------------- |
-| `/maps list`   | `game` (optional, autocomplete)                                     | All Users   | List all maps, optionally filtered by game name |
-| `/maps add`    | `name`, `mode`, `game` (autocomplete), `experience_code` (optional) | Bot Owner   | Add a new map to the database                   |
-| `/maps edit`   | `map_id`, `name`, `mode`, `experience_code` (all optional)          | Bot Owner   | Update an existing map in the database          |
-| `/maps remove` | `map_id`                                                            | Bot Owner   | Delete a map from the database                  |
+| Command       | Parameters                                                          | Scoped User | Description                                     |
+| ------------- | ------------------------------------------------------------------- | ----------- | ----------------------------------------------- |
+| `/maps`       | `game` (optional, autocomplete)                                     | All Users   | List all maps, optionally filtered by game name |
+| `/map add`    | `name`, `mode`, `game` (autocomplete), `experience_code` (optional) | Bot Owner   | Add a new map to the database                   |
+| `/map edit`   | `map_id`, `name`, `mode`, `experience_code` (all optional)          | Bot Owner   | Update an existing map in the database          |
+| `/map remove` | `map_id`                                                            | Bot Owner   | Delete a map from the database                  |
 
 ### User Management Commands
 
