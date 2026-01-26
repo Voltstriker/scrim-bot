@@ -35,12 +35,38 @@ The following commands are available in the bot:
 
 ### General Commands
 
-| Command   | Parameters              | Scoped User | Description                                                            |
-| --------- | ----------------------- | ----------- | ---------------------------------------------------------------------- |
-| `/info`   | None                    | Bot Owner   | Display information about the bot including server count and latency   |
-| `/ping`   | None                    | Bot Owner   | Test the bot's responsiveness and display latency                      |
-| `/sync`   | `scope` (global\|guild) | Bot Owner   | Synchronise slash commands either globally or to the current guild     |
-| `/unsync` | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild |
+| Command           | Parameters              | Scoped User | Description                                                             |
+| ----------------- | ----------------------- | ----------- | ----------------------------------------------------------------------- |
+| `/info`           | None                    | Bot Owner   | Display information about the bot including server count and latency    |
+| `/ping`           | None                    | Bot Owner   | Test the bot's responsiveness and display latency                       |
+| `/sync`           | `scope` (global\|guild) | Bot Owner   | Synchronise slash commands either globally or to the current guild      |
+| `/unsync`         | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild  |
+| `/database reset` | None                    | Bot Owner   | Reset all database tables with confirmation (ephemeral, preserves logs) |
+
+### Game Management Commands
+
+| Command         | Parameters                             | Scoped User | Description                             |
+| --------------- | -------------------------------------- | ----------- | --------------------------------------- |
+| `/games list`   | None                                   | All Users   | List all games in the database          |
+| `/games add`    | `name`, `series` (optional)            | Bot Owner   | Add a new game to the database          |
+| `/games update` | `game_id`, `name`, `series` (optional) | Bot Owner   | Update an existing game in the database |
+| `/games delete` | `game_id`                              | Bot Owner   | Delete a game from the database         |
+
+### Map Management Commands
+
+| Command        | Parameters                                                          | Scoped User | Description                                     |
+| -------------- | ------------------------------------------------------------------- | ----------- | ----------------------------------------------- |
+| `/maps list`   | `game` (optional, autocomplete)                                     | All Users   | List all maps, optionally filtered by game name |
+| `/maps add`    | `name`, `mode`, `game` (autocomplete), `experience_code` (optional) | Bot Owner   | Add a new map to the database                   |
+| `/maps edit`   | `map_id`, `name`, `mode`, `experience_code` (all optional)          | Bot Owner   | Update an existing map in the database          |
+| `/maps remove` | `map_id`                                                            | Bot Owner   | Delete a map from the database                  |
+
+### User Management Commands
+
+| Command         | Parameters | Scoped User | Description                                                |
+| --------------- | ---------- | ----------- | ---------------------------------------------------------- |
+| `/users list`   | None       | All Users   | List all users in the database with their team memberships |
+| `/users search` | `user`     | All Users   | Search for a user by Discord tag                           |
 
 ### Team Management Commands
 

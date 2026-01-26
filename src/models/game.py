@@ -277,6 +277,24 @@ class Map:
         rows = db.select("maps", where="game_id = ?", parameters=(game_id,), order_by="name")
         return [cls.from_row(row) for row in rows]
 
+    @classmethod
+    def get_all(cls, db: Database) -> list["Map"]:
+        """
+        Retrieve all maps.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+
+        Returns
+        -------
+        list[Map]
+            List of all maps.
+        """
+        rows = db.select("maps", order_by="name")
+        return [cls.from_row(row) for row in rows]
+
 
 @dataclass
 class MatchFormat:
