@@ -9,10 +9,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Run Black
-        uses: psf/black@stable
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v3
         with:
-          options: "--check --verbose"
+          python-version: 3.13
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+      - name: Run Black
+        run: |
+          python -m black --check --verbose .
 
   pylint:
     name: Run Pylint Linter
