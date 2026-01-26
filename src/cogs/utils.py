@@ -69,8 +69,6 @@ class DatabaseResetConfirmView(discord.ui.View):
         ----------
         interaction : discord.Interaction
             The interaction that triggered this button.
-        _button : discord.ui.Button
-            The button that was pressed (unused).
         """
         self.approved = True
         self.interaction = interaction
@@ -85,8 +83,6 @@ class DatabaseResetConfirmView(discord.ui.View):
         ----------
         interaction : discord.Interaction
             The interaction that triggered this button.
-        _button : discord.ui.Button
-            The button that was pressed (unused).
         """
         self.approved = False
         self.interaction = interaction

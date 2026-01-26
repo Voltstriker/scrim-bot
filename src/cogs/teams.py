@@ -1072,8 +1072,7 @@ class Teams(commands.Cog, name="Teams"):
             # Prevent captain from removing themselves
             if target_user.id == team.captain_id:
                 await context.send(
-                    f"❌ You cannot remove the team captain from **{team.name}** [{team.tag}]. "
-                    "Please transfer captaincy to another member first."
+                    f"❌ You cannot remove the team captain from **{team.name}** [{team.tag}]. " "Please transfer captaincy to another member first."
                 )
                 return
 

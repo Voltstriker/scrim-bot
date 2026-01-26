@@ -210,9 +210,7 @@ class Map:
         """
         if self.id == 0:
             # Insert new map
-            map_id = db.insert(
-                "maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id, "experience_code": self.experience_code}
-            )
+            map_id = db.insert("maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id, "experience_code": self.experience_code})
             if map_id:
                 object.__setattr__(self, "id", map_id)
                 return map_id
