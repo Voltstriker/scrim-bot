@@ -542,6 +542,7 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 mode TEXT NOT NULL,
+                experience_code TEXT,
                 game_id INTEGER NOT NULL,
                 FOREIGN KEY (game_id) REFERENCES games(id)
             )

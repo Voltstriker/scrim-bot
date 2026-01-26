@@ -156,12 +156,15 @@ class Map:
         Game mode for this map.
     game_id : int
         Foreign key to the game this map belongs to.
+    experience_code : str, optional
+        Unique code from the video game that identifies the map.
     """
 
     id: int
     name: str
     mode: str
     game_id: int
+    experience_code: Optional[str] = None
 
     @classmethod
     def from_row(cls, row) -> "Map":
@@ -178,7 +181,13 @@ class Map:
         Map
             Map model instance.
         """
-        return cls(id=row["id"], name=row["name"], mode=row["mode"], game_id=row["game_id"])
+        return cls(
+            id=row["id"],
+            name=row["name"],
+            mode=row["mode"],
+            game_id=row["game_id"],
+            experience_code=row["experience_code"] if row["experience_code"] else None,
+        )
 
     def save(self, db: Database) -> int:
         """
@@ -201,13 +210,17 @@ class Map:
         """
         if self.id == 0:
             # Insert new map
-            map_id = db.insert("maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id})
+            map_id = db.insert(
+                "maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id, "experience_code": self.experience_code}
+            )
             if map_id:
                 object.__setattr__(self, "id", map_id)
                 return map_id
             raise ValueError("Failed to insert map")
         # Update existing map
-        db.update("maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id}, "id = ?", (self.id,))
+        db.update(
+            "maps", {"name": self.name, "mode": self.mode, "game_id": self.game_id, "experience_code": self.experience_code}, "id = ?", (self.id,)
+        )
         return self.id
 
     def delete(self, db: Database) -> int:
