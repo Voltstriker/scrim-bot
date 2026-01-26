@@ -179,6 +179,7 @@ class DiscordBot(commands.Bot):
 
         Logs a message indicating that the bot is online and prints the invite URL.
         Sets the bot's status and activity.
+        Ensures the bot owner is added to the database.
         """
         self.logger.info("Bot is online and ready to receive commands.")
 
@@ -193,6 +194,61 @@ class DiscordBot(commands.Bot):
             "Invite URL: https://discord.com/oauth2/authorize?client_id=%s&permissions=7336485162839121&scope=bot%%20applications.commands",  # pylint: disable=line-too-long
             client_id,
         )
+
+        # Ensure bot owner is in the database
+        await self._ensure_bot_owner_in_database(app_info)
+
+    async def _ensure_bot_owner_in_database(self, app_info: discord.AppInfo) -> None:
+        """
+        Ensure the bot owner is added to both users and admins tables.
+
+        Parameters
+        ----------
+        app_info : discord.AppInfo
+            The application info containing owner details.
+        """
+        from datetime import datetime  # pylint: disable=import-outside-toplevel
+
+        from models import BotAdminConfig, User  # pylint: disable=import-outside-toplevel,import-error
+
+        try:
+            owner = app_info.owner
+            if not owner:
+                self.logger.warning("Bot owner information not available")
+                return
+
+            # Check if owner exists in users table
+            owner_user = User.get_by_discord_id(self.database, str(owner.id))
+            if not owner_user:
+                owner_user = User(
+                    id=0,
+                    discord_id=str(owner.id),
+                    display_name=owner.display_name,
+                    created_date=datetime.now(),
+                )
+                owner_user.save(self.database)
+                self.logger.debug("Bot owner added to users table: %s (ID: %s)", owner.display_name, owner.id)
+
+            # Check if owner exists in admins table
+            owner_admin = BotAdminConfig.get_by_user_id(self.database, str(owner.id))
+            if not owner_admin:
+                owner_admin = BotAdminConfig(
+                    id=0,
+                    discord_user_id=str(owner.id),
+                    discord_server_id=None,
+                    discord_role_id=None,
+                    scope="user",
+                    admin=True,
+                    created_date=datetime.now(),
+                    created_by=owner_user.id,
+                    updated_date=None,
+                    updated_by=None,
+                )
+                owner_admin.save(self.database)
+                self.logger.debug("Bot owner added to admins table: %s (ID: %s)", owner.display_name, owner.id)
+
+        except Exception as ex:
+            self.logger.error("Failed to add bot owner to database: %s", ex)
 
     async def on_command_error(self, context: commands.Context, error: commands.CommandError) -> None:  # pylint: disable=arguments-differ
         """

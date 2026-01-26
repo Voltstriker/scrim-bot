@@ -44,6 +44,14 @@ The following commands are available in the bot:
 | `/unsync`         | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild          |
 | `/database reset` | None                    | Bot Owner   | Reset all database tables with confirmation (ephemeral, preserves logs)         |
 
+### Admin Management Commands
+
+| Command        | Parameters            | Scoped User | Description                                                                      |
+| -------------- | --------------------- | ----------- | -------------------------------------------------------------------------------- |
+| `/admin add`   | `target` (user\|role) | Bot Owner   | Add a user or role as a bot administrator (users and roles can execute restricted bot actions) |
+| `/admin remove`| `target` (user\|role) | Bot Owner   | Remove a user or role from bot administrators                                    |
+| `/admins`      | None                  | Bot Owner   | List all bot administrators (both users and roles)                               |
+
 ### Game Management Commands
 
 | Command         | Parameters                             | Scoped User | Description                             |

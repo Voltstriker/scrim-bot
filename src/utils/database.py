@@ -710,5 +710,26 @@ class Database:
             )
             """)
 
+        # Create admin configuration table
+        self.execute("""
+            CREATE TABLE IF NOT EXISTS admins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                discord_user_id TEXT,
+                discord_server_id TEXT,
+                discord_role_id TEXT,
+                scope TEXT NOT NULL CHECK(scope IN ('user', 'role')),
+                admin INTEGER NOT NULL DEFAULT 0,
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER NOT NULL,
+                updated_date TIMESTAMP,
+                updated_by INTEGER,
+                UNIQUE(discord_user_id),
+                UNIQUE(discord_server_id, discord_role_id),
+                FOREIGN KEY (discord_user_id) REFERENCES users(discord_id),
+                FOREIGN KEY (created_by) REFERENCES users(id),
+                FOREIGN KEY (updated_by) REFERENCES users(id)
+            )
+            """)
+
         self.commit()
         self.logger.info("Database schema initialised successfully")
