@@ -313,3 +313,25 @@ class TeamMembership:
         """
         rows = db.select("team_membership", where="user_id = ?", parameters=(user_id,))
         return [cls.from_row(row) for row in rows]
+
+    @classmethod
+    def get_by_user_and_team(cls, db: Database, user_id: int, team_id: int) -> Optional["TeamMembership"]:
+        """
+        Retrieve a specific team membership for a user and team.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        user_id : int
+            User ID to filter by.
+        team_id : int
+            Team ID to filter by.
+
+        Returns
+        -------
+        TeamMembership, optional
+            Team membership if found, None otherwise.
+        """
+        row = db.select_one("team_membership", where="user_id = ? AND team_id = ?", parameters=(user_id, team_id))
+        return cls.from_row(row) if row else None

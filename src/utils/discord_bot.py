@@ -78,8 +78,10 @@ class DiscordBot(commands.Bot):
         Event handler called when the bot is ready.
     is_owner_or_admin()
         Returns a check decorator that verifies if user is bot owner or admin.
-    is_captain(team_owner_id, requester_user_id)
-        Static method that checks if user is a team captain/owner.
+    is_team_owner(team_owner_id, requester_user_id)
+        Static method that checks if user is the team owner.
+    is_captain(team_id, requester_user_id)
+        Checks if user is a captain of the team (via team_membership table).
     is_owner_or_admin_or_captain(context, team, requester_user_id)
         Checks if user is bot owner, admin, or team captain.
 
@@ -315,32 +317,62 @@ class DiscordBot(commands.Bot):
         return predicate
 
     @staticmethod
-    def is_captain(team_owner_id: int, requester_user_id: int) -> bool:
+    def is_team_owner(team_owner_id: int, requester_user_id: int) -> bool:
         """
-        Check if a user is the captain/owner of a team.
+        Check if a user is the owner of a team.
 
         This is a simple helper function that compares the team's owner ID
-        with the requester's user ID to determine if the user is the team captain.
+        with the requester's user ID to determine if the user is the team owner.
 
         Parameters
         ----------
         team_owner_id : int
-            The database ID of the team's owner/captain.
+            The database ID of the team's owner.
         requester_user_id : int
             The database ID of the user making the request.
 
         Returns
         -------
         bool
-            True if the requester is the team captain, False otherwise.
+            True if the requester is the team owner, False otherwise.
 
         Examples
         --------
-        >>> if DiscordBot.is_captain(team.owner_id, requester.id):
-        >>>     # User is the team captain
-        >>>     await process_captain_action()
+        >>> if DiscordBot.is_team_owner(team.owner_id, requester.id):
+        >>>     # User is the team owner
+        >>>     await process_owner_action()
         """
         return team_owner_id == requester_user_id
+
+    def is_captain(self, team_id: int, requester_user_id: int) -> bool:
+        """
+        Check if a user is a captain of the team.
+
+        This method checks the team_membership table to determine if the user
+        has captain privileges for the specified team.
+
+        Parameters
+        ----------
+        team_id : int
+            The database ID of the team.
+        requester_user_id : int
+            The database ID of the user making the request.
+
+        Returns
+        -------
+        bool
+            True if the requester is a captain of the team, False otherwise.
+
+        Examples
+        --------
+        >>> if self.bot.is_captain(team.id, requester.id):
+        >>>     # User is a team captain
+        >>>     await process_captain_action()
+        """
+        from models import TeamMembership  # pylint: disable=import-outside-toplevel,import-error
+
+        membership = TeamMembership.get_by_user_and_team(self.database, requester_user_id, team_id)
+        return membership is not None and membership.captain
 
     async def is_owner_or_admin_or_captain(self, context: Context, team, requester_user_id: int) -> bool:
         """
@@ -348,7 +380,8 @@ class DiscordBot(commands.Bot):
 
         This method uses check_any pattern - evaluates multiple predicates and
         returns True if any pass:
-        - Captain check: bot.is_captain() static method
+        - Team owner check: bot.is_team_owner() static method
+        - Captain check: bot.is_captain() method
         - Owner/Admin check: bot.is_owner_or_admin() predicate
 
         Parameters
@@ -366,6 +399,23 @@ class DiscordBot(commands.Bot):
             True if user is owner, admin, or captain.
         """
 
+        # Create team owner check predicate
+        async def is_team_owner_check(ctx: Context) -> bool:  # pylint: disable=unused-argument
+            """
+            Check if user is team owner.
+
+            Parameters
+            ----------
+            ctx : Context
+                The command context (unused, required for predicate signature).
+
+            Returns
+            -------
+            bool
+                True if user is team owner.
+            """
+            return self.is_team_owner(team.owner_id, requester_user_id)
+
         # Create captain check predicate
         async def is_captain_check(ctx: Context) -> bool:  # pylint: disable=unused-argument
             """
@@ -381,13 +431,13 @@ class DiscordBot(commands.Bot):
             bool
                 True if user is captain.
             """
-            return self.is_captain(team.owner_id, requester_user_id)
+            return self.is_captain(team.id, requester_user_id)
 
         # Get owner/admin check predicate
         is_owner_admin_check = self.is_owner_or_admin()
 
         # Evaluate predicates using check_any pattern - return True if any pass
-        checks = [is_captain_check, is_owner_admin_check]
+        checks = [is_team_owner_check, is_captain_check, is_owner_admin_check]
         for check in checks:
             try:
                 if await check(context):

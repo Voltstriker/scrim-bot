@@ -35,13 +35,95 @@ from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from models import Team, User, TeamMembership, League, LeagueMembership  # pylint: disable=import-error
+from models import BotAdminConfig, Team, User, TeamMembership, League, LeagueMembership  # pylint: disable=import-error
 
 if TYPE_CHECKING:
     from utils.discord_bot import DiscordBot  # pylint: disable=import-error,no-name-in-module
+
+
+async def team_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    """
+    Autocomplete function for team selection.
+
+    Shows teams that the user is a member of, formatted as "Team Name (Tag)".
+    Bot owners and admins see all teams in the server.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction that triggered the autocomplete.
+    current : str
+        The current user input.
+
+    Returns
+    -------
+    list[app_commands.Choice[str]]
+        List of team choices for autocomplete.
+    """
+
+    # Get the bot and database from the interaction
+    bot: DiscordBot = interaction.client  # type: ignore[assignment]
+
+    # Check if user is bot owner or admin
+    is_admin = False
+
+    # Check if user is bot owner
+    if await bot.is_owner(interaction.user):
+        is_admin = True
+
+    # Check if user is in admins table
+    if not is_admin:
+        admin_config = BotAdminConfig.get_by_user_id(bot.database, str(interaction.user.id))
+        if admin_config and admin_config.admin:
+            is_admin = True
+
+    # Check if user has any admin roles (if in a guild)
+    if not is_admin and interaction.guild and hasattr(interaction.user, "roles"):
+        for role in interaction.user.roles:  # type: ignore[attr-defined]
+            role_config = BotAdminConfig.get_by_server_and_role(bot.database, str(interaction.guild.id), str(role.id))
+            if role_config and role_config.admin:
+                is_admin = True
+                break
+
+    # Build list of teams
+    teams = []
+
+    if is_admin:
+        # Admins/owners see all teams in the guild
+        if interaction.guild:
+            teams = Team.get_by_server(bot.database, str(interaction.guild.id))
+        else:
+            # In DMs, show all teams (though team commands typically require guild context)
+            # This could be limited if needed
+            teams = []
+    else:
+        # Regular users see only teams they're a member of
+        db_user = User.get_by_discord_id(bot.database, str(interaction.user.id))
+        if not db_user:
+            return []
+
+        user_memberships = TeamMembership.get_by_user(bot.database, db_user.id)
+        if not user_memberships:
+            return []
+
+        for membership in user_memberships:
+            team = Team.get_by_id(bot.database, membership.team_id)
+            if team:
+                # Filter by server context if in a guild
+                if interaction.guild and team.discord_server != str(interaction.guild.id):
+                    continue
+                teams.append(team)
+
+    # Filter teams by current input
+    current_lower = current.lower()
+    filtered_teams = [t for t in teams if current_lower in t.name.lower() or current_lower in t.tag.lower()]
+
+    # Return up to 25 choices (Discord's limit)
+    return [app_commands.Choice(name=f"{team.name} ({team.tag})", value=str(team.id)) for team in filtered_teams[:25]]
 
 
 class TeamInviteView(discord.ui.View):
@@ -205,7 +287,7 @@ class TeamInviteView(discord.ui.View):
 
 class TeamOwnerTransferView(discord.ui.View):
     """
-    A view for confirming team captaincy transfer.
+    A view for confirming team ownership transfer.
 
     Attributes
     ----------
@@ -258,10 +340,10 @@ class TeamOwnerTransferView(discord.ui.View):
             The button that was pressed.
         """
         try:
-            # Verify the user pressing the button is the current captain
+            # Verify the user pressing the button is the current owner
             db_user = User.get_by_discord_id(self.bot.database, str(interaction.user.id))
             if not db_user or db_user.id != self.current_owner_id:
-                await interaction.response.send_message("❌ Only the current captain can approve this transfer.", ephemeral=True)
+                await interaction.response.send_message("❌ Only the current owner can approve this transfer.", ephemeral=True)
                 return
 
             # Get team details
@@ -271,38 +353,38 @@ class TeamOwnerTransferView(discord.ui.View):
                 self.stop()
                 return
 
-            # Verify new captain is still a member
+            # Verify new owner is still a member
             memberships = TeamMembership.get_by_team(self.bot.database, team.id)
             is_member = any(m.user_id == self.new_owner_id for m in memberships)
             if not is_member:
-                await interaction.response.send_message("❌ The new captain is no longer a member of the team.", ephemeral=True)
+                await interaction.response.send_message("❌ The new owner is no longer a member of the team.", ephemeral=True)
                 self.stop()
                 return
 
-            # Transfer captaincy
+            # Transfer ownership
             object.__setattr__(team, "owner_id", self.new_owner_id)
             team.save(self.bot.database)
 
-            # Get new captain details
-            new_captain = User.get_by_id(self.bot.database, self.new_owner_id)
-            new_captain_name = new_captain.display_name if new_captain and new_captain.display_name else "Unknown"
+            # Get new owner details
+            new_owner = User.get_by_id(self.bot.database, self.new_owner_id)
+            new_owner_name = new_owner.display_name if new_owner and new_owner.display_name else "Unknown"
 
             # Update the original message
             embed = discord.Embed(
-                title="✅ Captaincy Transferred",
-                description=f"**{new_captain_name}** is now the captain of **{team.name}** [{team.tag}]!",
+                title="✅ Ownership Transferred",
+                description=f"**{new_owner_name}** is now the owner of **{team.name}** [{team.tag}]!",
                 colour=discord.Colour.green(),
             )
             embed.add_field(name="Team ID", value=str(team.id), inline=True)
-            embed.add_field(name="New Captain", value=new_captain_name, inline=True)
-            embed.add_field(name="Previous Captain", value=interaction.user.display_name, inline=True)
+            embed.add_field(name="New Owner", value=new_owner_name, inline=True)
+            embed.add_field(name="Previous Owner", value=interaction.user.display_name, inline=True)
             embed.set_footer(text=f"Transferred by {interaction.user.name}")
 
             await interaction.response.edit_message(embed=embed, view=None)
             self.stop()
 
         except Exception as e:
-            self.bot.logger.error("Error approving captaincy transfer: %s", e)
+            self.bot.logger.error("Error approving ownership transfer: %s", e)
             await interaction.response.send_message(f"❌ An error occurred: {e}", ephemeral=True)
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.red, emoji="❌")
@@ -318,10 +400,10 @@ class TeamOwnerTransferView(discord.ui.View):
             The button that was pressed.
         """
         try:
-            # Verify the user pressing the button is the current captain
+            # Verify the user pressing the button is the current owner
             db_user = User.get_by_discord_id(self.bot.database, str(interaction.user.id))
             if not db_user or db_user.id != self.current_owner_id:
-                await interaction.response.send_message("❌ Only the current captain can decline this transfer.", ephemeral=True)
+                await interaction.response.send_message("❌ Only the current owner can decline this transfer.", ephemeral=True)
                 return
 
             # Get team details
@@ -334,7 +416,7 @@ class TeamOwnerTransferView(discord.ui.View):
             # Update the original message
             embed = discord.Embed(
                 title="❌ Transfer Cancelled",
-                description=f"The captaincy transfer for **{team.name}** [{team.tag}] has been cancelled.",
+                description=f"The ownership transfer for **{team.name}** [{team.tag}] has been cancelled.",
                 colour=discord.Colour.red(),
             )
 
@@ -342,7 +424,7 @@ class TeamOwnerTransferView(discord.ui.View):
             self.stop()
 
         except Exception as e:
-            self.bot.logger.error("Error declining captaincy transfer: %s", e)
+            self.bot.logger.error("Error declining ownership transfer: %s", e)
             await interaction.response.send_message(f"❌ An error occurred: {e}", ephemeral=True)
 
 
@@ -368,7 +450,7 @@ class Teams(commands.Cog, name="Teams"):
     team_invite(context, team_id, user)
         Invites a user to join a team by team ID.
     team_edit(context, team_id, name, tag)
-        Edits a team's name or tag by team ID (captain only).
+        Edits a team's name or tag by team ID.
     team_search(context, name, tag)
         Searches for a team by name or tag.
     """
@@ -453,8 +535,8 @@ class Teams(commands.Cog, name="Teams"):
 
                 # Add teams (max 25 fields)
                 for team in filtered_teams[:25]:
-                    captain = User.get_by_id(self.bot.database, team.owner_id)
-                    captain_name = captain.display_name if captain and captain.display_name else "Unknown"
+                    owner = User.get_by_id(self.bot.database, team.owner_id)
+                    owner_name = owner.display_name if owner and owner.display_name else "Unknown"
 
                     memberships = TeamMembership.get_by_team(self.bot.database, team.id)
                     member_count = len(memberships)
@@ -480,7 +562,7 @@ class Teams(commands.Cog, name="Teams"):
 
                     embed.add_field(
                         name=f"{team.name} [{team.tag}]",
-                        value=f"Server: {server_name}\nCaptain: {captain_name}\nMembers: {member_count}\n{league_info}\nID: {team.id}",
+                        value=f"Server: {server_name}\nOaptain: {owner_name}\nMembers: {member_count}\n{league_info}\nID: {team.id}",
                         inline=False,
                     )
 
@@ -564,8 +646,8 @@ class Teams(commands.Cog, name="Teams"):
 
             # Add teams (max 25 fields)
             for team in filtered_teams[:25]:
-                captain = User.get_by_id(self.bot.database, team.owner_id)
-                captain_name = captain.display_name if captain and captain.display_name else "Unknown"
+                owner = User.get_by_id(self.bot.database, team.owner_id)
+                owner_name = owner.display_name if owner and owner.display_name else "Unknown"
 
                 memberships = TeamMembership.get_by_team(self.bot.database, team.id)
                 member_count = len(memberships)
@@ -582,7 +664,7 @@ class Teams(commands.Cog, name="Teams"):
 
                 embed.add_field(
                     name=f"{team.name} [{team.tag}]",
-                    value=f"Captain: {captain_name}\nMembers: {member_count}\n{league_info}\nID: {team.id}",
+                    value=f"Owner: {owner_name}\nMembers: {member_count}\n{league_info}\nID: {team.id}",
                     inline=False,
                 )
 
@@ -652,7 +734,7 @@ class Teams(commands.Cog, name="Teams"):
             )
             team_id = team.save(self.bot.database)
 
-            # Add creator as team member (and captain)
+            # Add creator as team member, owner, and captain
             membership = TeamMembership(user_id=db_user.id, team_id=team_id, captain=True, joined_date=datetime.now(), updated_date=None)
             membership.save(self.bot.database)
 
@@ -663,7 +745,7 @@ class Teams(commands.Cog, name="Teams"):
                 colour=discord.Colour.green(),
             )
             embed.add_field(name="Team ID", value=str(team_id), inline=True)
-            embed.add_field(name="Captain", value=discord_user.mention, inline=True)
+            embed.add_field(name="Owner", value=discord_user.mention, inline=True)
             embed.add_field(name="Server", value=context.guild.name if context.guild else "Unknown", inline=True)
             embed.set_footer(text=f"Created by {context.author.name}")
 
@@ -673,8 +755,9 @@ class Teams(commands.Cog, name="Teams"):
             self.bot.logger.error("Error creating team: %s", e)
             await context.send(f"❌ An error occurred while creating the team: {e}")
 
-    @team.command(name="members", description="List all members of a team by team ID")
-    async def team_members(self, context: Context, team_id: int) -> None:
+    @team.command(name="members", description="List all members of a team")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_members(self, context: Context, team: str) -> None:
         """
         List all members of a team.
 
@@ -682,8 +765,8 @@ class Teams(commands.Cog, name="Teams"):
         ----------
         context : discord.ext.commands.Context
             The context in which the command was invoked.
-        team_id : int
-            The ID of the team.
+        team : str
+            The selected team to list members for
         """
         await context.defer()
         try:
@@ -692,36 +775,43 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ This command can only be used in a server.")
                 return
 
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
+
             # Get team by ID
-            team = Team.get_by_id(self.bot.database, team_id)
-            if not team:
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+            if not team_obj:
                 await context.send(f"❌ No team found with ID {team_id}.")
                 return
 
             # Verify team is in this server
-            if team.discord_server != server_id:
+            if team_obj.discord_server != server_id:
                 await context.send(f"❌ Team with ID {team_id} does not exist in this server.")
                 return
 
             # Get team members
-            memberships = TeamMembership.get_by_team(self.bot.database, team.id)
+            memberships = TeamMembership.get_by_team(self.bot.database, team_obj.id)
 
             if not memberships:
-                await context.send(f"Team **{team.name}** [{team.tag}] has no members.")
+                await context.send(f"Team **{team_obj.name}** [{team_obj.tag}] has no members.")
                 return
 
             # Create embed with member list
             embed = discord.Embed(
-                title=f"👥 {team.name} [{team.tag}] - Members",
+                title=f"👥 {team_obj.name} [{team_obj.tag}] - Members",
                 description=f"Found {len(memberships)} member(s).",
                 colour=discord.Colour.blue(),
             )
 
-            # Get captain info
-            captain = User.get_by_id(self.bot.database, team.owner_id)
-            captain_name = captain.display_name if captain and captain.display_name else "Unknown"
+            # Get owner info
+            owner = User.get_by_id(self.bot.database, team_obj.owner_id)
+            owner_name = owner.display_name if owner and owner.display_name else "Unknown"
 
-            embed.add_field(name="Captain", value=captain_name, inline=False)
+            embed.add_field(name="Owner", value=owner_name, inline=False)
 
             # Add members - collect and sort alphabetically
             member_data = []
@@ -729,8 +819,8 @@ class Teams(commands.Cog, name="Teams"):
                 user = User.get_by_id(self.bot.database, membership.user_id)
                 if user:
                     display = user.display_name if user.display_name else f"User {user.id}"
-                    is_captain = " 👑" if user.id == team.owner_id else ""
-                    member_data.append((display.lower(), f"• {display}{is_captain}"))
+                    is_owner = " 👑" if user.id == team_obj.owner_id else ""
+                    member_data.append((display.lower(), f"• {display}{is_owner}"))
 
             # Sort by display name (case-insensitive) and take first 24
             member_data.sort(key=lambda x: x[0])
@@ -750,17 +840,18 @@ class Teams(commands.Cog, name="Teams"):
             self.bot.logger.error("Error listing team members: %s", e)
             await context.send(f"❌ An error occurred while listing team members: {e}")
 
-    @team.command(name="invite", description="Invite a user to join your team by team ID")
-    async def team_invite(self, context: Context, team_id: int, user: discord.User) -> None:
+    @team.command(name="invite", description="Invite a user to join your team")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_invite(self, context: Context, team: str, user: discord.User) -> None:
         """
-        Invite a user to join a team by team ID.
+        Invite a user to join a team.
 
         Parameters
         ----------
         context : discord.ext.commands.Context
             The context in which the command was invoked.
-        team_id : int
-            The ID of the team.
+        team : str
+            The team to invite the user to.
         user : discord.User
             The Discord user to invite.
         """
@@ -777,21 +868,28 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ You are not registered in the database. Create a team first.")
                 return
 
-            # Get team by ID
-            team = Team.get_by_id(self.bot.database, team_id)
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
 
-            if not team:
+            # Get team by ID
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+
+            if not team_obj:
                 await context.send(f"❌ No team found with ID {team_id}.")
                 return
 
             # Verify team is in this server
-            if team.discord_server != server_id:
+            if team_obj.discord_server != server_id:
                 await context.send(f"❌ Team with ID {team_id} does not exist in this server.")
                 return
 
             # Check if requester is the team captain, owner, or admin
-            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
-                await context.send("❌ Only the team captain (or bot owner/admin) can invite members.")
+            if not await self.bot.is_owner_or_admin_or_captain(context, team_obj, requester.id):
+                await context.send("❌ Only the team owner or captains can invite members.")
                 return
 
             # Get or create the invited user
@@ -801,10 +899,10 @@ class Teams(commands.Cog, name="Teams"):
                 invited_user.save(self.bot.database)
 
             # Check if user is already a member
-            existing_memberships = TeamMembership.get_by_team(self.bot.database, team.id)
+            existing_memberships = TeamMembership.get_by_team(self.bot.database, team_obj.id)
             for membership in existing_memberships:
                 if membership.user_id == invited_user.id:
-                    await context.send(f"❌ {user.mention} is already a member of **{team.name}**.")
+                    await context.send(f"❌ {user.mention} is already a member of **{team_obj.name}**.")
                     return
 
             # Send invitation via DM
@@ -812,11 +910,11 @@ class Teams(commands.Cog, name="Teams"):
                 # Create invitation embed
                 invite_embed = discord.Embed(
                     title="📨 Team Invitation",
-                    description=f"You have been invited to join **{team.name}** [{team.tag}]!",
+                    description=f"You have been invited to join **{team_obj.name}** [{team_obj.tag}]!",
                     colour=discord.Colour.blue(),
                 )
-                invite_embed.add_field(name="Team", value=f"{team.name} [{team.tag}]", inline=True)
-                invite_embed.add_field(name="Team ID", value=str(team.id), inline=True)
+                invite_embed.add_field(name="Team", value=f"{team_obj.name} [{team_obj.tag}]", inline=True)
+                invite_embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
                 invite_embed.add_field(name="Invited by", value=context.author.display_name, inline=True)
 
                 # Get server name
@@ -825,7 +923,7 @@ class Teams(commands.Cog, name="Teams"):
                 invite_embed.set_footer(text="This invitation will expire in 48 hours")
 
                 # Create the view with Accept/Decline buttons
-                view = TeamInviteView(self.bot, team.id, invited_user.id, context.channel.id)
+                view = TeamInviteView(self.bot, team_obj.id, invited_user.id, context.channel.id)
 
                 # Send DM to the user
                 await user.send(embed=invite_embed, view=view)
@@ -836,7 +934,7 @@ class Teams(commands.Cog, name="Teams"):
                     description=f"Sent a team invitation to {user.mention} via direct message.",
                     colour=discord.Colour.green(),
                 )
-                embed.add_field(name="Team", value=f"{team.name} [{team.tag}]", inline=True)
+                embed.add_field(name="Team", value=f"{team_obj.name} [{team_obj.tag}]", inline=True)
                 embed.set_footer(text=f"Invited by {context.author.name}")
 
                 await context.send(embed=embed)
@@ -850,17 +948,18 @@ class Teams(commands.Cog, name="Teams"):
             self.bot.logger.error("Error inviting team member: %s", e)
             await context.send(f"❌ An error occurred while inviting the team member: {e}")
 
-    @team.command(name="edit", description="Edit your team's name or tag by team ID")
-    async def team_edit(self, context: Context, team_id: int, name: Optional[str] = None, tag: Optional[str] = None) -> None:
+    @team.command(name="edit", description="Edit your team's name or tag")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_edit(self, context: Context, team: str, name: Optional[str] = None, tag: Optional[str] = None) -> None:
         """
-        Edit a team's name or tag by team ID.
+        Edit a team's name or tag.
 
         Parameters
         ----------
         context : discord.ext.commands.Context
             The context in which the command was invoked.
-        team_id : int
-            The ID of the team to edit.
+        team : str
+            The team to edit.
         name : str, optional
             The new team name.
         tag : str, optional
@@ -879,21 +978,28 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ You are not registered in the database. Create a team first.")
                 return
 
-            # Get team by ID
-            team = Team.get_by_id(self.bot.database, team_id)
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
 
-            if not team:
+            # Get team by ID
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+
+            if not team_obj:
                 await context.send(f"❌ No team found with ID {team_id}.")
                 return
 
             # Verify team is in this server
-            if team.discord_server != server_id:
+            if team_obj.discord_server != server_id:
                 await context.send(f"❌ Team with ID {team_id} does not exist in this server.")
                 return
 
             # Check if requester is the team captain, owner, or admin
-            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
-                await context.send("❌ Only the team captain (or bot owner/admin) can edit team details.")
+            if not await self.bot.is_owner_or_admin_or_captain(context, team_obj, requester.id):
+                await context.send("❌ Only the team owner or captains can edit team details.")
                 return
 
             # Check if at least one parameter is provided
@@ -902,20 +1008,20 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Update team details
-            old_name = team.name
-            old_tag = team.tag
+            old_name = team_obj.name
+            old_tag = team_obj.tag
 
             if name:
-                object.__setattr__(team, "name", name)
+                object.__setattr__(team_obj, "name", name)
             if tag:
-                object.__setattr__(team, "tag", tag)
+                object.__setattr__(team_obj, "tag", tag)
 
-            team.save(self.bot.database)
+            team_obj.save(self.bot.database)
 
             # Create success embed
             embed = discord.Embed(
                 title="✅ Team Updated",
-                description=f"Successfully updated team **{team.name}** [{team.tag}].",
+                description=f"Successfully updated team **{team_obj.name}** [{team_obj.tag}].",
                 colour=discord.Colour.green(),
             )
 
@@ -928,8 +1034,8 @@ class Teams(commands.Cog, name="Teams"):
             if changes:
                 embed.add_field(name="Changes", value="\n".join(changes), inline=False)
 
-            embed.add_field(name="Team ID", value=str(team.id), inline=True)
-            embed.add_field(name="Captain", value=context.author.mention, inline=True)
+            embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
+            embed.add_field(name="Owner", value=context.author.mention, inline=True)
             embed.set_footer(text=f"Updated by {context.author.name}")
 
             await context.send(embed=embed)
@@ -938,8 +1044,9 @@ class Teams(commands.Cog, name="Teams"):
             self.bot.logger.error("Error editing team: %s", e)
             await context.send(f"❌ An error occurred while editing the team: {e}")
 
-    @team.command(name="leave", description="Leave a team by team ID")
-    async def team_leave(self, context: Context, team_id: int) -> None:
+    @team.command(name="leave", description="Leave a team")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_leave(self, context: Context, team: str) -> None:
         """
         Leave a team by removing yourself from its membership.
 
@@ -947,18 +1054,25 @@ class Teams(commands.Cog, name="Teams"):
         ----------
         context : Context
             The command context.
-        team_id : int
-            The ID of the team to leave.
+        team : str
+            The team the user wants to leave.
 
         Notes
         -----
-        - Captains cannot leave their own team - they must transfer captaincy first
+        - Owners cannot leave their own team - they must transfer ownership first
         - Users can only leave teams they are currently a member of
         - This action cannot be undone
         """
         await context.defer()
 
         try:
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
+
             # Get the user from the database
             db_user = User.get_by_discord_id(self.bot.database, str(context.author.id))
             if not db_user:
@@ -966,23 +1080,23 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Get the team
-            team = Team.get_by_id(self.bot.database, team_id)
-            if not team:
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+            if not team_obj:
                 await context.send(f"❌ Team with ID {team_id} does not exist.")
                 return
 
             # Check if user is a member of the team
-            memberships = TeamMembership.get_by_team(self.bot.database, team.id)
+            memberships = TeamMembership.get_by_team(self.bot.database, team_obj.id)
             membership = next((m for m in memberships if m.user_id == db_user.id), None)
             if not membership:
-                await context.send(f"❌ You are not a member of **{team.name}** [{team.tag}].")
+                await context.send(f"❌ You are not a member of **{team_obj.name}** [{team_obj.tag}].")
                 return
 
-            # Check if user is the captain
-            if team.owner_id == db_user.id:
+            # Check if user is the owner
+            if team_obj.owner_id == db_user.id:
                 await context.send(
-                    f"❌ You cannot leave **{team.name}** [{team.tag}] as you are the captain. "
-                    "Please transfer captaincy to another member first or disband the team."
+                    f"❌ You cannot leave **{team_obj.name}** [{team_obj.tag}] as you are the owner. "
+                    "Please transfer ownership to another member first or disband the team."
                 )
                 return
 
@@ -992,11 +1106,11 @@ class Teams(commands.Cog, name="Teams"):
             # Create success embed
             embed = discord.Embed(
                 title="✅ Left Team",
-                description=f"You have successfully left **{team.name}** [{team.tag}].",
+                description=f"You have successfully left **{team_obj.name}** [{team_obj.tag}].",
                 colour=discord.Colour.green(),
             )
 
-            embed.add_field(name="Team ID", value=str(team.id), inline=True)
+            embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
             embed.add_field(name="Former Member", value=context.author.mention, inline=True)
             embed.set_footer(text=f"Left by {context.author.name}")
 
@@ -1006,24 +1120,25 @@ class Teams(commands.Cog, name="Teams"):
             self.bot.logger.error("Error leaving team: %s", e)
             await context.send(f"❌ An error occurred while leaving the team: {e}")
 
-    @team.command(name="remove", description="Remove a member from your team by team ID")
-    async def team_remove(self, context: Context, team_id: int, user: discord.User) -> None:
+    @team.command(name="remove", description="Remove a member from your team")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_remove(self, context: Context, team: str, user: discord.User) -> None:
         """
-        Remove a member from a team (captain only).
+        Remove a member from a team (captains only).
 
         Parameters
         ----------
         context : Context
             The command context.
-        team_id : int
-            The ID of the team.
+        team : str
+            The team a member is being removed from.
         user : discord.User
             The Discord user to remove from the team.
 
         Notes
         -----
-        - Only team captains can remove members
-        - Captains cannot remove themselves - use transfer captaincy first
+        - Only team captains or owners can remove members
+        - Owners cannot remove themselves - use transfer ownership first
         - The removed member will need to be re-invited to rejoin
         """
         await context.defer()
@@ -1040,20 +1155,27 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ You are not registered in the database. Create a team first.")
                 return
 
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
+
             # Get team by ID
-            team = Team.get_by_id(self.bot.database, team_id)
-            if not team:
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+            if not team_obj:
                 await context.send(f"❌ No team found with ID {team_id}.")
                 return
 
             # Verify team is in this server
-            if team.discord_server != server_id:
+            if team_obj.discord_server != server_id:
                 await context.send(f"❌ Team with ID {team_id} does not exist in this server.")
                 return
 
             # Check if requester is the team captain, owner, or admin
-            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
-                await context.send("❌ Only the team captain (or bot owner/admin) can remove members.")
+            if not await self.bot.is_owner_or_admin_or_captain(context, team_obj, requester.id):
+                await context.send("❌ Only the team owner or captains can remove members.")
                 return
 
             # Get the user to remove from database
@@ -1063,16 +1185,17 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Check if user is a member of the team
-            memberships = TeamMembership.get_by_team(self.bot.database, team.id)
+            memberships = TeamMembership.get_by_team(self.bot.database, team_obj.id)
             membership = next((m for m in memberships if m.user_id == target_user.id), None)
             if not membership:
-                await context.send(f"❌ {user.mention} is not a member of **{team.name}** [{team.tag}].")
+                await context.send(f"❌ {user.mention} is not a member of **{team_obj.name}** [{team_obj.tag}].")
                 return
 
             # Prevent captain from removing themselves
-            if target_user.id == team.owner_id:
+            if target_user.id == team_obj.owner_id:
                 await context.send(
-                    f"❌ You cannot remove the team captain from **{team.name}** [{team.tag}]. " "Please transfer captaincy to another member first."
+                    f"❌ You cannot remove the team owner from **{team_obj.name}** [{team_obj.tag}]. "
+                    "Please transfer ownership to another member first."
                 )
                 return
 
@@ -1082,11 +1205,11 @@ class Teams(commands.Cog, name="Teams"):
             # Create success embed
             embed = discord.Embed(
                 title="✅ Member Removed",
-                description=f"{user.mention} has been removed from **{team.name}** [{team.tag}].",
+                description=f"{user.mention} has been removed from **{team_obj.name}** [{team_obj.tag}].",
                 colour=discord.Colour.green(),
             )
 
-            embed.add_field(name="Team ID", value=str(team.id), inline=True)
+            embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
             embed.add_field(name="Removed By", value=context.author.mention, inline=True)
             embed.set_footer(text=f"Removed by {context.author.name}")
 
@@ -1096,24 +1219,25 @@ class Teams(commands.Cog, name="Teams"):
             self.bot.logger.error("Error removing team member: %s", e)
             await context.send(f"❌ An error occurred while removing the team member: {e}")
 
-    @team.command(name="owner", description="Transfer team captaincy to another member by team ID")
-    async def team_owner(self, context: Context, team_id: int, user: discord.User) -> None:
+    @team.command(name="owner", description="Transfer team ownership to another member")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_owner(self, context: Context, team: str, user: discord.User) -> None:
         """
-        Transfer team captaincy to another member (captain only).
+        Transfer team ownership to another member (owner only).
 
         Parameters
         ----------
         context : Context
             The command context.
-        team_id : int
-            The ID of the team.
+        team : str
+            The team to transfer ownership for.
         user : discord.User
-            The Discord user to make the new captain.
+            The Discord user to make the new ownership.
 
         Notes
         -----
-        - Only the current team captain can transfer captaincy
-        - The new captain must be an existing member of the team
+        - Only the current team owner can transfer ownership
+        - The new owner must be an existing member of the team
         - A confirmation prompt with 5-minute timeout is shown before transfer
         """
         await context.defer()
@@ -1130,60 +1254,88 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ You are not registered in the database. Create a team first.")
                 return
 
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
+
             # Get team by ID
-            team = Team.get_by_id(self.bot.database, team_id)
-            if not team:
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+            if not team_obj:
                 await context.send(f"❌ No team found with ID {team_id}.")
                 return
 
             # Verify team is in this server
-            if team.discord_server != server_id:
+            if team_obj.discord_server != server_id:
                 await context.send(f"❌ Team with ID {team_id} does not exist in this server.")
                 return
 
-            # Check if requester is the team captain, owner, or admin
-            if not await self.bot.is_owner_or_admin_or_captain(context, team, requester.id):
-                await context.send("❌ Only the team captain (or bot owner/admin) can transfer captaincy.")
+            # Check if requester is the team owner, bot owner, or admin
+            # Only team owner (not captains) or bot admin can transfer ownership
+            is_team_owner_check = self.bot.is_team_owner(team_obj.owner_id, requester.id)
+            is_bot_admin = False
+
+            # Check if user is bot owner
+            if await context.bot.is_owner(context.author):
+                is_bot_admin = True
+
+            # Check if user is admin (user-scoped or role-scoped)
+            if not is_bot_admin:
+                admin_config = BotAdminConfig.get_by_user_id(self.bot.database, str(context.author.id))
+                if admin_config and admin_config.admin:
+                    is_bot_admin = True
+
+            if not is_bot_admin and context.guild and hasattr(context.author, "roles"):
+                for role in context.author.roles:  # type: ignore[attr-defined]
+                    role_config = BotAdminConfig.get_by_server_and_role(self.bot.database, str(context.guild.id), str(role.id))
+                    if role_config and role_config.admin:
+                        is_bot_admin = True
+                        break
+
+            if not (is_team_owner_check or is_bot_admin):
+                await context.send("❌ Only the team owner can transfer ownership.")
                 return
 
-            # Get the new captain from database
-            new_captain = User.get_by_discord_id(self.bot.database, str(user.id))
-            if not new_captain:
+            # Get the new owner from database
+            new_owner = User.get_by_discord_id(self.bot.database, str(user.id))
+            if not new_owner:
                 await context.send(f"❌ {user.mention} is not registered in the database.")
                 return
 
-            # Check if new captain is trying to transfer to themselves
-            if new_captain.id == requester.id:
-                await context.send("❌ You are already the captain of this team.")
+            # Check if new owner is trying to transfer to themselves
+            if new_owner.id == requester.id:
+                await context.send("❌ You are already the owner of this team.")
                 return
 
-            # Check if new captain is a member of the team
-            memberships = TeamMembership.get_by_team(self.bot.database, team.id)
-            is_member = any(m.user_id == new_captain.id for m in memberships)
+            # Check if new owner is a member of the team
+            memberships = TeamMembership.get_by_team(self.bot.database, team_obj.id)
+            is_member = any(m.user_id == new_owner.id for m in memberships)
             if not is_member:
-                await context.send(f"❌ {user.mention} is not a member of **{team.name}** [{team.tag}].")
+                await context.send(f"❌ {user.mention} is not a member of **{team_obj.name}** [{team_obj.tag}].")
                 return
 
             # Create confirmation embed
             embed = discord.Embed(
-                title="⚠️ Confirm Captaincy Transfer",
-                description=f"Are you sure you want to transfer captaincy of **{team.name}** [{team.tag}] to {user.mention}?",
+                title="⚠️ Confirm Ownership Transfer",
+                description=f"Are you sure you want to transfer ownership of **{team_obj.name}** [{team_obj.tag}] to {user.mention}?",
                 colour=discord.Colour.orange(),
             )
-            embed.add_field(name="Team", value=f"{team.name} [{team.tag}]", inline=True)
-            embed.add_field(name="Team ID", value=str(team.id), inline=True)
-            embed.add_field(name="Current Captain", value=context.author.mention, inline=True)
-            embed.add_field(name="New Captain", value=user.mention, inline=True)
+            embed.add_field(name="Team", value=f"{team_obj.name} [{team_obj.tag}]", inline=True)
+            embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
+            embed.add_field(name="Current Owner", value=context.author.mention, inline=True)
+            embed.add_field(name="New Owner", value=user.mention, inline=True)
             embed.set_footer(text="This confirmation will expire in 5 minutes")
 
             # Create the view with Approve/Decline buttons
-            view = TeamOwnerTransferView(self.bot, team.id, requester.id, new_captain.id, context)
+            view = TeamOwnerTransferView(self.bot, team_obj.id, requester.id, new_owner.id, context)
 
             await context.send(embed=embed, view=view)
 
         except Exception as e:
-            self.bot.logger.error("Error initiating captaincy transfer: %s", e)
-            await context.send(f"❌ An error occurred while initiating the captaincy transfer: {e}")
+            self.bot.logger.error("Error initiating ownership transfer: %s", e)
+            await context.send(f"❌ An error occurred while initiating the ownership transfer: {e}")
 
 
 async def setup(bot: DiscordBot) -> None:
