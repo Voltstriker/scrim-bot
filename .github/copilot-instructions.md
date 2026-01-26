@@ -548,7 +548,7 @@ These checks ensure code quality, consistency, and adherence to project standard
 
 When making significant changes to the project that would benefit from additional context in these instructions, please:
 
-- **Update the README.md commands table** whenever a new bot command is added or modified in any file in the `src/cogs/` directory - this is critical for user documentation
+- **CRITICAL: Update the README.md commands table** whenever a new bot command is added or modified in any file in the `src/cogs/` directory - this is NOT optional and must be done as part of the same change. The README.md is user-facing documentation and must stay synchronized with code changes.
 - **Review this file** and suggest updates to keep it current
 - **Update the README.md** with any useful context or information that would help users understand new features
 - **Add new sections** for major features, architectural patterns, or conventions
