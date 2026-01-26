@@ -343,8 +343,8 @@ class MapManagement(commands.Cog, name="Map Management"):
             await context.send("Please specify a subcommand: list, add, edit, or remove.")
 
     async def game_autocomplete(
-        self, interaction: discord.Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:  # pylint: disable=unused-argument
+        self, interaction: discord.Interaction, current: str # pylint: disable=unused-argument
+    ) -> list[app_commands.Choice[str]]:
         """
         Autocomplete callback for game selection.
 
@@ -367,8 +367,8 @@ class MapManagement(commands.Cog, name="Map Management"):
         return [app_commands.Choice(name=game.name, value=game.name) for game in filtered_games]
 
     async def map_autocomplete(
-        self, interaction: discord.Interaction, current: str
-    ) -> list[app_commands.Choice[str]]:  # pylint: disable=unused-argument
+        self, interaction: discord.Interaction, current: str # pylint: disable=unused-argument
+    ) -> list[app_commands.Choice[str]]:
         """
         Autocomplete callback for map selection.
 
