@@ -70,7 +70,6 @@ class General(commands.Cog, name="General"):
         self.bot = bot
 
     @commands.hybrid_command(name="info", description="Get information about the bot")
-    @commands.is_owner()
     async def info(self, context: Context) -> None:
         """Display information about the bot
 
