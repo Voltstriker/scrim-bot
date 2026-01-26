@@ -83,7 +83,7 @@ The following commands are available in the bot:
 | --------------- | -------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------ |
 | `/teams`        | `league`, `user`, `search` (all optional)    | All Users    | List teams on the server with optional filters, or list your teams when used in DMs        |
 | `/team create`  | `name`, `tag`                                | All Users    | Create a new team with the specified name and tag                                          |
-| `/team members` | `team_id`                                    | All Users    | List all members of a team by team ID                                                      |
+| `/team members` | `team_id`                                    | All Users    | List all members of a team (displays Owner, Captains, and Members sections)                |
 | `/team invite`  | `team_id`, `user`                            | Team Captain | Invite a user to join your team by team ID (captain only, sends DM with Accept/Decline)    |
 | `/team edit`    | `team_id`, `name`, `tag` (name/tag optional) | Team Captain | Edit your team's name or tag by team ID (captain only, at least one parameter required)    |
 | `/team leave`   | `team_id`                                    | All Users    | Leave a team by team ID (captains must transfer captaincy first)                           |

@@ -813,24 +813,45 @@ class Teams(commands.Cog, name="Teams"):
 
             embed.add_field(name="Owner", value=owner_name, inline=False)
 
-            # Add members - collect and sort alphabetically
-            member_data = []
+            # Separate captains and regular members
+            captain_data = []
+            regular_member_data = []
+
             for membership in memberships:
                 user = User.get_by_id(self.bot.database, membership.user_id)
                 if user:
+                    # Skip owner (already shown separately)
+                    if user.id == team_obj.owner_id:
+                        continue
+
                     display = user.display_name if user.display_name else f"User {user.id}"
-                    is_owner = " 👑" if user.id == team_obj.owner_id else ""
-                    member_data.append((display.lower(), f"• {display}{is_owner}"))
 
-            # Sort by display name (case-insensitive) and take first 24
-            member_data.sort(key=lambda x: x[0])
-            member_list = [member[1] for member in member_data[:24]]
+                    if membership.captain:
+                        captain_data.append((display.lower(), f"• {display}"))
+                    else:
+                        regular_member_data.append((display.lower(), f"• {display}"))
 
-            if member_list:
+            # Sort and display captains
+            if captain_data:
+                captain_data.sort(key=lambda x: x[0])
+                captain_list = [captain[1] for captain in captain_data[:24]]
+                embed.add_field(name="Captains", value="\n".join(captain_list), inline=False)
+
+            # Sort and display regular members
+            remaining_slots = 24 - len(captain_data) if captain_data else 24
+            if regular_member_data:
+                regular_member_data.sort(key=lambda x: x[0])
+                # Limit regular members to fit within embed limits
+                member_list = [member[1] for member in regular_member_data[:remaining_slots]]
                 embed.add_field(name="Members", value="\n".join(member_list), inline=False)
+            else:
+                embed.add_field(name="Members", value="No other members", inline=False)
 
-            if len(memberships) > 24:
-                embed.set_footer(text=f"Showing first 24 of {len(memberships)} members")
+            # Calculate total non-owner members shown
+            total_non_owner = len(captain_data) + len(regular_member_data)
+
+            if total_non_owner > 24:
+                embed.set_footer(text=f"Showing first 24 of {total_non_owner} members (excluding owner)")
             else:
                 embed.set_footer(text=f"Requested by {context.author.name}")
 
