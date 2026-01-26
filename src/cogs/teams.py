@@ -64,8 +64,8 @@ async def is_owner_or_admin_or_captain(bot: DiscordBot, context: Context, team: 
     bool
         True if user is owner, admin, or captain.
     """
-    # Check if user is team captain
-    if team.captain_id == requester_user_id:
+    # Check if user is team owner
+    if team.owner_id == requester_user_id:
         return True
 
     # Check if user is bot owner
@@ -256,15 +256,15 @@ class TeamOwnerTransferView(discord.ui.View):
         The bot instance.
     team_id : int
         The ID of the team.
-    current_captain_id : int
-        The database ID of the current captain.
-    new_captain_id : int
-        The database ID of the new captain.
+    current_owner_id : int
+        The database ID of the current owner.
+    new_owner_id : int
+        The database ID of the new owner.
     context : Context
         The command context for sending responses.
     """
 
-    def __init__(self, bot: DiscordBot, team_id: int, current_captain_id: int, new_captain_id: int, context: Context) -> None:
+    def __init__(self, bot: DiscordBot, team_id: int, current_owner_id: int, new_owner_id: int, context: Context) -> None:
         """
         Initialise the team owner transfer view.
 
@@ -274,18 +274,18 @@ class TeamOwnerTransferView(discord.ui.View):
             The bot instance.
         team_id : int
             The ID of the team.
-        current_captain_id : int
-            The database ID of the current captain.
-        new_captain_id : int
-            The database ID of the new captain.
+        current_owner_id : int
+            The database ID of the current owner.
+        new_owner_id : int
+            The database ID of the new owner.
         context : Context
             The command context.
         """
         super().__init__(timeout=300)  # 5 minute timeout
         self.bot = bot
         self.team_id = team_id
-        self.current_captain_id = current_captain_id
-        self.new_captain_id = new_captain_id
+        self.current_owner_id = current_owner_id
+        self.new_owner_id = new_owner_id
         self.context = context
 
     @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, emoji="✅")
@@ -303,7 +303,7 @@ class TeamOwnerTransferView(discord.ui.View):
         try:
             # Verify the user pressing the button is the current captain
             db_user = User.get_by_discord_id(self.bot.database, str(interaction.user.id))
-            if not db_user or db_user.id != self.current_captain_id:
+            if not db_user or db_user.id != self.current_owner_id:
                 await interaction.response.send_message("❌ Only the current captain can approve this transfer.", ephemeral=True)
                 return
 
@@ -316,18 +316,18 @@ class TeamOwnerTransferView(discord.ui.View):
 
             # Verify new captain is still a member
             memberships = TeamMembership.get_by_team(self.bot.database, team.id)
-            is_member = any(m.user_id == self.new_captain_id for m in memberships)
+            is_member = any(m.user_id == self.new_owner_id for m in memberships)
             if not is_member:
                 await interaction.response.send_message("❌ The new captain is no longer a member of the team.", ephemeral=True)
                 self.stop()
                 return
 
             # Transfer captaincy
-            object.__setattr__(team, "captain_id", self.new_captain_id)
+            object.__setattr__(team, "owner_id", self.new_owner_id)
             team.save(self.bot.database)
 
             # Get new captain details
-            new_captain = User.get_by_id(self.bot.database, self.new_captain_id)
+            new_captain = User.get_by_id(self.bot.database, self.new_owner_id)
             new_captain_name = new_captain.display_name if new_captain and new_captain.display_name else "Unknown"
 
             # Update the original message
@@ -363,7 +363,7 @@ class TeamOwnerTransferView(discord.ui.View):
         try:
             # Verify the user pressing the button is the current captain
             db_user = User.get_by_discord_id(self.bot.database, str(interaction.user.id))
-            if not db_user or db_user.id != self.current_captain_id:
+            if not db_user or db_user.id != self.current_owner_id:
                 await interaction.response.send_message("❌ Only the current captain can decline this transfer.", ephemeral=True)
                 return
 
@@ -496,7 +496,7 @@ class Teams(commands.Cog, name="Teams"):
 
                 # Add teams (max 25 fields)
                 for team in filtered_teams[:25]:
-                    captain = User.get_by_id(self.bot.database, team.captain_id)
+                    captain = User.get_by_id(self.bot.database, team.owner_id)
                     captain_name = captain.display_name if captain and captain.display_name else "Unknown"
 
                     memberships = TeamMembership.get_by_team(self.bot.database, team.id)
@@ -607,7 +607,7 @@ class Teams(commands.Cog, name="Teams"):
 
             # Add teams (max 25 fields)
             for team in filtered_teams[:25]:
-                captain = User.get_by_id(self.bot.database, team.captain_id)
+                captain = User.get_by_id(self.bot.database, team.owner_id)
                 captain_name = captain.display_name if captain and captain.display_name else "Unknown"
 
                 memberships = TeamMembership.get_by_team(self.bot.database, team.id)
@@ -688,7 +688,7 @@ class Teams(commands.Cog, name="Teams"):
                 id=0,
                 name=name,
                 tag=tag,
-                captain_id=db_user.id,
+                owner_id=db_user.id,
                 created_at=datetime.now(),
                 created_by=db_user.id,
                 discord_server=server_id,
@@ -761,7 +761,7 @@ class Teams(commands.Cog, name="Teams"):
             )
 
             # Get captain info
-            captain = User.get_by_id(self.bot.database, team.captain_id)
+            captain = User.get_by_id(self.bot.database, team.owner_id)
             captain_name = captain.display_name if captain and captain.display_name else "Unknown"
 
             embed.add_field(name="Captain", value=captain_name, inline=False)
@@ -772,7 +772,7 @@ class Teams(commands.Cog, name="Teams"):
                 user = User.get_by_id(self.bot.database, membership.user_id)
                 if user:
                     display = user.display_name if user.display_name else f"User {user.id}"
-                    is_captain = " 👑" if user.id == team.captain_id else ""
+                    is_captain = " 👑" if user.id == team.owner_id else ""
                     member_data.append((display.lower(), f"• {display}{is_captain}"))
 
             # Sort by display name (case-insensitive) and take first 24
@@ -1022,7 +1022,7 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Check if user is the captain
-            if team.captain_id == db_user.id:
+            if team.owner_id == db_user.id:
                 await context.send(
                     f"❌ You cannot leave **{team.name}** [{team.tag}] as you are the captain. "
                     "Please transfer captaincy to another member first or disband the team."
@@ -1113,7 +1113,7 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             # Prevent captain from removing themselves
-            if target_user.id == team.captain_id:
+            if target_user.id == team.owner_id:
                 await context.send(
                     f"❌ You cannot remove the team captain from **{team.name}** [{team.tag}]. " "Please transfer captaincy to another member first."
                 )

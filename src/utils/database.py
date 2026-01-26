@@ -617,11 +617,11 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 tag TEXT NOT NULL,
-                captain_id INTEGER NOT NULL,
+                owner_id INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 created_by INTEGER NOT NULL,
                 discord_server TEXT NOT NULL,
-                FOREIGN KEY (captain_id) REFERENCES users(id),
+                FOREIGN KEY (owner_id) REFERENCES users(id),
                 FOREIGN KEY (created_by) REFERENCES users(id)
             )
             """)

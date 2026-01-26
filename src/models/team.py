@@ -34,8 +34,8 @@ class Team:
         Team name.
     tag : str
         Team tag/shorthand name.
-    captain_id : int
-        Foreign key to the user who is team captain.
+    owner_id : int
+        Foreign key to the user who is team owner.
     created_at : datetime
         When the team was created.
     created_by : int
@@ -47,7 +47,7 @@ class Team:
     id: int
     name: str
     tag: str
-    captain_id: int
+    owner_id: int
     created_at: datetime
     created_by: int
     discord_server: str
@@ -71,7 +71,7 @@ class Team:
             id=row["id"],
             name=row["name"],
             tag=row["tag"],
-            captain_id=row["captain_id"],
+            owner_id=row["owner_id"],
             created_at=row["created_at"],
             created_by=row["created_by"],
             discord_server=row["discord_server"],
@@ -103,7 +103,7 @@ class Team:
                 {
                     "name": self.name,
                     "tag": self.tag,
-                    "captain_id": self.captain_id,
+                    "owner_id": self.owner_id,
                     "created_at": self.created_at,
                     "created_by": self.created_by,
                     "discord_server": self.discord_server,
@@ -116,7 +116,7 @@ class Team:
         # Update existing team
         db.update(
             "teams",
-            {"name": self.name, "tag": self.tag, "captain_id": self.captain_id, "discord_server": self.discord_server},
+            {"name": self.name, "tag": self.tag, "owner_id": self.owner_id, "discord_server": self.discord_server},
             "id = ?",
             (self.id,),
         )
