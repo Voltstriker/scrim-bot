@@ -547,8 +547,7 @@ class Database:
         self.logger.info("Initialising database schema...")
 
         # Create logs table for database logging
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS logs (
                 log_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -559,23 +558,19 @@ class Database:
                 function TEXT,
                 line_number INTEGER
             )
-            """
-        )
+            """)
 
         # Create games table
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS games (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 series TEXT
             )
-            """
-        )
+            """)
 
         # Create maps table
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS maps (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -584,23 +579,19 @@ class Database:
                 game_id INTEGER NOT NULL,
                 FOREIGN KEY (game_id) REFERENCES games(id)
             )
-            """
-        )
+            """)
 
         # Create match_formats table
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS match_formats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 max_players INTEGER NOT NULL,
                 match_count INTEGER NOT NULL
             )
-            """
-        )
+            """)
 
         # Create permitted_maps table (composite primary key)
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS permitted_maps (
                 match_format_id INTEGER,
                 map_id INTEGER,
@@ -608,24 +599,20 @@ class Database:
                 FOREIGN KEY (match_format_id) REFERENCES match_formats(id),
                 FOREIGN KEY (map_id) REFERENCES maps(id)
             )
-            """
-        )
+            """)
 
         # Create users table
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 discord_id TEXT NOT NULL,
                 display_name TEXT,
                 created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-            """
-        )
+            """)
 
         # Create teams table
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS teams (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -637,12 +624,10 @@ class Database:
                 FOREIGN KEY (captain_id) REFERENCES users(id),
                 FOREIGN KEY (created_by) REFERENCES users(id)
             )
-            """
-        )
+            """)
 
         # Create leagues table
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS leagues (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -658,12 +643,10 @@ class Database:
                 FOREIGN KEY (created_by) REFERENCES users(id),
                 FOREIGN KEY (updated_by) REFERENCES users(id)
             )
-            """
-        )
+            """)
 
         # Create team_membership table (composite primary key)
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS team_membership (
                 user_id INTEGER,
                 team_id INTEGER,
@@ -674,12 +657,10 @@ class Database:
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (team_id) REFERENCES teams(id)
             )
-            """
-        )
+            """)
 
         # Create league_membership table (composite primary key)
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS league_membership (
                 league_id INTEGER,
                 team_id INTEGER,
@@ -690,12 +671,10 @@ class Database:
                 FOREIGN KEY (team_id) REFERENCES teams(id),
                 FOREIGN KEY (joined_by) REFERENCES users(id)
             )
-            """
-        )
+            """)
 
         # Create matches table
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS matches (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 league_id INTEGER NOT NULL,
@@ -713,12 +692,10 @@ class Database:
                 FOREIGN KEY (winning_team) REFERENCES teams(id),
                 FOREIGN KEY (issued_by) REFERENCES users(id)
             )
-            """
-        )
+            """)
 
         # Create match_results table (composite primary key)
-        self.execute(
-            """
+        self.execute("""
             CREATE TABLE IF NOT EXISTS match_results (
                 match_id INTEGER,
                 round INTEGER,
@@ -731,8 +708,7 @@ class Database:
                 FOREIGN KEY (map_id) REFERENCES maps(id),
                 FOREIGN KEY (winning_team) REFERENCES teams(id)
             )
-            """
-        )
+            """)
 
         self.commit()
         self.logger.info("Database schema initialised successfully")
