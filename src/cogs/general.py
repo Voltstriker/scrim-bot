@@ -32,10 +32,13 @@ setup(bot)
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from datetime import datetime
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
+
+from models import User  # pylint: disable=import-error
 
 if TYPE_CHECKING:
     from utils.discord_bot import DiscordBot  # pylint: disable=import-error,no-name-in-module
@@ -54,8 +57,10 @@ class General(commands.Cog, name="General"):
     -------
     __init__(bot)
         Initialises the General cog.
-    say(context, message)
-        Sends a message as the bot in the current channel.
+    info(context)
+        Display information about the bot.
+    displayname(context, name)
+        Set the user's display name in the bot.
     """
 
     def __init__(self, bot: DiscordBot) -> None:
@@ -85,6 +90,50 @@ class General(commands.Cog, name="General"):
         )
         embed.add_field(name="Servers", value=len(self.bot.guilds), inline=True)
         embed.add_field(name="Latency", value=f"{round(self.bot.latency * 1000)}ms", inline=True)
+        embed.set_footer(text=f"Requested by {context.author.name}")
+        await context.send(embed=embed)
+
+    @commands.hybrid_command(name="displayname", description="Set your display name in the bot")
+    async def displayname(self, context: Context, *, name: str) -> None:
+        """
+        Set your display name in the bot.
+
+        If you are not registered in the users table, you will be added automatically.
+        This display name is used when the bot shows team memberships and other information.
+
+        Parameters
+        ----------
+        context : discord.ext.commands.Context
+            The context in which the command was invoked.
+        name : str
+            The display name to set.
+        """
+        await context.defer()
+
+        discord_id = str(context.author.id)
+
+        # Check if user exists in the database
+        user = User.get_by_discord_id(self.bot.database, discord_id)
+
+        if user:
+            # Update existing user's display name
+            object.__setattr__(user, "display_name", name)
+            user.save(self.bot.database)
+            embed = discord.Embed(
+                title="Display Name Updated",
+                description=f"Your display name has been updated to **{name}**.",
+                color=discord.Color.green(),
+            )
+        else:
+            # Create new user with display name
+            user = User(id=0, discord_id=discord_id, display_name=name, created_date=datetime.now())
+            user.save(self.bot.database)
+            embed = discord.Embed(
+                title="Display Name Set",
+                description=f"You have been registered in the bot with display name **{name}**.",
+                color=discord.Color.green(),
+            )
+
         embed.set_footer(text=f"Requested by {context.author.name}")
         await context.send(embed=embed)
 

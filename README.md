@@ -35,13 +35,14 @@ The following commands are available in the bot:
 
 ### General Commands
 
-| Command           | Parameters              | Scoped User | Description                                                             |
-| ----------------- | ----------------------- | ----------- | ----------------------------------------------------------------------- |
-| `/info`           | None                    | Bot Owner   | Display information about the bot including server count and latency    |
-| `/ping`           | None                    | Bot Owner   | Test the bot's responsiveness and display latency                       |
-| `/sync`           | `scope` (global\|guild) | Bot Owner   | Synchronise slash commands either globally or to the current guild      |
-| `/unsync`         | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild  |
-| `/database reset` | None                    | Bot Owner   | Reset all database tables with confirmation (ephemeral, preserves logs) |
+| Command           | Parameters              | Scoped User | Description                                                                     |
+| ----------------- | ----------------------- | ----------- | ------------------------------------------------------------------------------- |
+| `/info`           | None                    | Bot Owner   | Display information about the bot including server count and latency            |
+| `/displayname`    | `name`                  | All Users   | Set your display name in the bot (used for team memberships and other displays) |
+| `/ping`           | None                    | Bot Owner   | Test the bot's responsiveness and display latency                               |
+| `/sync`           | `scope` (global\|guild) | Bot Owner   | Synchronise slash commands either globally or to the current guild              |
+| `/unsync`         | `scope` (global\|guild) | Bot Owner   | Unsynchronise slash commands either globally or from the current guild          |
+| `/database reset` | None                    | Bot Owner   | Reset all database tables with confirmation (ephemeral, preserves logs)         |
 
 ### Game Management Commands
 
