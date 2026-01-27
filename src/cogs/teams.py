@@ -216,8 +216,7 @@ class TeamInviteView(discord.ui.View):
             # Check if team is disbanded
             if not team.is_active:
                 await interaction.response.send_message(
-                    f"❌ Team **{team.name}** [{team.tag}] has been disbanded and is no longer accepting new members.",
-                    ephemeral=True
+                    f"❌ Team **{team.name}** [{team.tag}] has been disbanded and is no longer accepting new members.", ephemeral=True
                 )
                 self.stop()
                 return
