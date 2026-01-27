@@ -145,10 +145,7 @@ async def team_autocomplete(interaction: discord.Interaction, current: str) -> l
     # Return up to 25 choices (Discord's limit)
     # Add a disbanded indicator for inactive teams
     return [
-        app_commands.Choice(
-            name=f"{team.name} ({team.tag})" + (" [DISBANDED]" if not team.is_active else ""),
-            value=str(team.id)
-        )
+        app_commands.Choice(name=f"{team.name} ({team.tag})" + (" [DISBANDED]" if not team.is_active else ""), value=str(team.id))
         for team in filtered_teams[:25]
     ]
 
@@ -461,6 +458,138 @@ class TeamOwnerTransferView(discord.ui.View):
 
         except Exception as e:
             self.bot.logger.error("Error declining ownership transfer: %s", e)
+            await interaction.response.send_message(f"❌ An error occurred: {e}", ephemeral=True)
+
+
+class TeamLeaveView(discord.ui.View):
+    """
+    A view for confirming leaving a team.
+
+    Attributes
+    ----------
+    bot : DiscordBot
+        The bot instance.
+    team_id : int
+        The ID of the team being left.
+    user_id : int
+        The database ID of the user leaving.
+    context : Context
+        The command context for sending responses.
+    """
+
+    def __init__(self, bot: DiscordBot, team_id: int, user_id: int, context: Context) -> None:
+        """
+        Initialise the team leave view.
+
+        Parameters
+        ----------
+        bot : DiscordBot
+            The bot instance.
+        team_id : int
+            The ID of the team.
+        user_id : int
+            The database ID of the user leaving.
+        context : Context
+            The command context.
+        """
+        super().__init__(timeout=300)  # 5 minute timeout
+        self.bot = bot
+        self.team_id = team_id
+        self.user_id = user_id
+        self.context = context
+
+    @discord.ui.button(label="Confirm", style=discord.ButtonStyle.red, emoji="✅")
+    async def confirm_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:  # pylint: disable=unused-argument
+        """
+        Handle the Confirm button press.
+
+        Parameters
+        ----------
+        interaction : discord.Interaction
+            The interaction that triggered this callback.
+        button : discord.ui.Button
+            The button that was pressed.
+        """
+        try:
+            # Verify the user pressing the button is the one leaving
+            db_user = User.get_by_discord_id(self.bot.database, str(interaction.user.id))
+            if not db_user or db_user.id != self.user_id:
+                await interaction.response.send_message("❌ Only the user leaving can confirm this action.", ephemeral=True)
+                return
+
+            # Get team details
+            team = Team.get_by_id(self.bot.database, self.team_id)
+            if not team:
+                await interaction.response.send_message("❌ Team no longer exists.", ephemeral=True)
+                self.stop()
+                return
+
+            # Get the membership
+            membership = TeamMembership.get_by_user_and_team(self.bot.database, self.user_id, self.team_id)
+            if not membership:
+                await interaction.response.send_message("❌ You are no longer a member of this team.", ephemeral=True)
+                self.stop()
+                return
+
+            # Remove the membership
+            membership.delete(self.bot.database)
+
+            # Create success embed
+            embed = discord.Embed(
+                title="✅ Left Team",
+                description=f"You have successfully left **{team.name}** [{team.tag}].",
+                colour=discord.Colour.green(),
+            )
+
+            embed.add_field(name="Team ID", value=str(team.id), inline=True)
+            embed.add_field(name="Former Member", value=interaction.user.mention, inline=True)
+            embed.set_footer(text=f"Left by {interaction.user.name}")
+
+            await interaction.response.edit_message(embed=embed, view=None)
+            self.stop()
+
+        except Exception as e:
+            self.bot.logger.error("Error confirming team leave: %s", e)
+            await interaction.response.send_message(f"❌ An error occurred: {e}", ephemeral=True)
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey, emoji="❌")
+    async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:  # pylint: disable=unused-argument
+        """
+        Handle the Cancel button press.
+
+        Parameters
+        ----------
+        interaction : discord.Interaction
+            The interaction that triggered this callback.
+        button : discord.ui.Button
+            The button that was pressed.
+        """
+        try:
+            # Verify the user pressing the button is the one who initiated
+            db_user = User.get_by_discord_id(self.bot.database, str(interaction.user.id))
+            if not db_user or db_user.id != self.user_id:
+                await interaction.response.send_message("❌ Only the user leaving can cancel this action.", ephemeral=True)
+                return
+
+            # Get team details
+            team = Team.get_by_id(self.bot.database, self.team_id)
+            if not team:
+                await interaction.response.send_message("❌ Team no longer exists.", ephemeral=True)
+                self.stop()
+                return
+
+            # Update the original message
+            embed = discord.Embed(
+                title="❌ Leave Cancelled",
+                description=f"You have cancelled leaving **{team.name}** [{team.tag}].",
+                colour=discord.Colour.red(),
+            )
+
+            await interaction.response.edit_message(embed=embed, view=None)
+            self.stop()
+
+        except Exception as e:
+            self.bot.logger.error("Error cancelling team leave: %s", e)
             await interaction.response.send_message(f"❌ An error occurred: {e}", ephemeral=True)
 
 
@@ -1162,7 +1291,7 @@ class Teams(commands.Cog, name="Teams"):
         - Users can only leave teams they are currently a member of
         - This action cannot be undone
         """
-        await context.defer()
+        await context.defer(ephemeral=True)
 
         try:
             # Parse team ID from autocomplete value
@@ -1199,21 +1328,21 @@ class Teams(commands.Cog, name="Teams"):
                 )
                 return
 
-            # Remove the membership
-            membership.delete(self.bot.database)
-
-            # Create success embed
+            # Create confirmation embed
             embed = discord.Embed(
-                title="✅ Left Team",
-                description=f"You have successfully left **{team_obj.name}** [{team_obj.tag}].",
-                colour=discord.Colour.green(),
+                title="⚠️ Confirm Leave Team",
+                description=f"Are you sure you want to leave **{team_obj.name}** [{team_obj.tag}]?",
+                colour=discord.Colour.orange(),
             )
-
+            embed.add_field(name="Team", value=f"{team_obj.name} [{team_obj.tag}]", inline=True)
             embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
-            embed.add_field(name="Former Member", value=context.author.mention, inline=True)
-            embed.set_footer(text=f"Left by {context.author.name}")
+            embed.add_field(name="Warning", value="You will need to be re-invited to rejoin this team.", inline=False)
+            embed.set_footer(text="This confirmation will expire in 5 minutes")
 
-            await context.send(embed=embed)
+            # Create the view with Confirm/Cancel buttons
+            view = TeamLeaveView(self.bot, team_obj.id, db_user.id, context)
+
+            await context.send(embed=embed, view=view, ephemeral=True)
 
         except Exception as e:
             self.bot.logger.error("Error leaving team: %s", e)
