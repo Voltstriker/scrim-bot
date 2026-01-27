@@ -699,6 +699,7 @@ These checks ensure code quality, consistency, and adherence to project standard
 When making significant changes to the project that would benefit from additional context in these instructions, please:
 
 - **CRITICAL: Update the README.md commands table** whenever a new bot command is added or modified in any file in the `src/cogs/` directory - this is NOT optional and must be done as part of the same change. The README.md is user-facing documentation and must stay synchronized with code changes.
+- **CRITICAL: Update docs/schema.dbml** whenever database schema changes are made in `src/utils/database.py` (initialise_schema method) or when models are updated in `src/models/` - this is NOT optional and is critical documentation. The schema.dbml file provides a visual database diagram and must stay synchronized with the actual schema. Refer to the existing schema.dbml file and the CREATE TABLE statements in database.py for the current schema structure.
 - **Review this file** and suggest updates to keep it current
 - **Update the README.md** with any useful context or information that would help users understand new features
 - **Add new sections** for major features, architectural patterns, or conventions
