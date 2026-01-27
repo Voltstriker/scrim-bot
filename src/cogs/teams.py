@@ -51,6 +51,9 @@ async def team_autocomplete(interaction: discord.Interaction, current: str) -> l
 
     Shows teams that the user is a member of, formatted as "Team Name (Tag)".
     Bot owners and admins see all teams in the server.
+    For the /team reenable command, shows only disbanded teams.
+    For the /team leave command, shows all teams (active and disbanded).
+    For other commands, shows only active teams.
 
     Parameters
     ----------
@@ -67,6 +70,14 @@ async def team_autocomplete(interaction: discord.Interaction, current: str) -> l
 
     # Get the bot and database from the interaction
     bot: DiscordBot = interaction.client  # type: ignore[assignment]
+
+    # Determine if this is the /team reenable command (should show disbanded teams)
+    # For reenable command, we want to show inactive teams only
+    # For leave command, we want to show all teams (active and inactive)
+    # For all other commands, we want to show active teams only
+    command_name = interaction.command.name if interaction.command else ""
+    show_inactive_only = command_name == "reenable"
+    show_all_teams = command_name == "leave"
 
     # Check if user is bot owner or admin
     is_admin = False
@@ -118,12 +129,28 @@ async def team_autocomplete(interaction: discord.Interaction, current: str) -> l
                     continue
                 teams.append(team)
 
+    # Filter by active/inactive status based on command
+    if show_inactive_only:
+        # For /team reenable, show only inactive/disbanded teams
+        teams = [t for t in teams if not t.is_active]
+    elif not show_all_teams:
+        # For all other commands (except leave), show only active teams
+        teams = [t for t in teams if t.is_active]
+    # For /team leave, show all teams (no filtering by is_active)
+
     # Filter teams by current input
     current_lower = current.lower()
     filtered_teams = [t for t in teams if current_lower in t.name.lower() or current_lower in t.tag.lower()]
 
     # Return up to 25 choices (Discord's limit)
-    return [app_commands.Choice(name=f"{team.name} ({team.tag})", value=str(team.id)) for team in filtered_teams[:25]]
+    # Add a disbanded indicator for inactive teams
+    return [
+        app_commands.Choice(
+            name=f"{team.name} ({team.tag})" + (" [DISBANDED]" if not team.is_active else ""),
+            value=str(team.id)
+        )
+        for team in filtered_teams[:25]
+    ]
 
 
 class TeamInviteView(discord.ui.View):
@@ -467,7 +494,14 @@ class Teams(commands.Cog, name="Teams"):
         self.bot = bot
 
     @commands.hybrid_command(name="teams", description="List teams on this server with optional filters")
-    async def teams(self, context: Context, league: Optional[str] = None, user: Optional[discord.User] = None, search: Optional[str] = None) -> None:
+    async def teams(
+        self,
+        context: Context,
+        league: Optional[str] = None,
+        user: Optional[discord.User] = None,
+        search: Optional[str] = None,
+        include_disbanded: bool = False,
+    ) -> None:
         """
         List all teams on the server, with optional filtering.
 
@@ -481,6 +515,8 @@ class Teams(commands.Cog, name="Teams"):
             Filter teams by user membership.
         search : str, optional
             Search teams by name or tag (partial match).
+        include_disbanded : bool, optional
+            Whether to include disbanded teams in the listing (default: False).
         """
         await context.defer()
         try:
@@ -512,6 +548,10 @@ class Teams(commands.Cog, name="Teams"):
                     return
 
                 filtered_teams = all_teams
+
+                # Filter by active status
+                if not include_disbanded:
+                    filtered_teams = [t for t in filtered_teams if t.is_active]
 
                 # Apply search filter if provided
                 if search:
@@ -550,6 +590,7 @@ class Teams(commands.Cog, name="Teams"):
                             league_names.append(lg.name)
 
                     league_info = f"Leagues: {', '.join(league_names)}" if league_names else "No leagues"
+                    status_indicator = "🚫 **DISBANDED**" if not team.is_active else ""
 
                     # Get server name
                     server_name = "Unknown Server"
@@ -560,9 +601,13 @@ class Teams(commands.Cog, name="Teams"):
                     except (ValueError, AttributeError):
                         pass
 
+                    value_parts = [f"Server: {server_name}", f"Owner: {owner_name}", f"Members: {member_count}", league_info, f"ID: {team.id}"]
+                    if status_indicator:
+                        value_parts.insert(0, status_indicator)
+
                     embed.add_field(
                         name=f"{team.name} [{team.tag}]",
-                        value=f"Server: {server_name}\nOaptain: {owner_name}\nMembers: {member_count}\n{league_info}\nID: {team.id}",
+                        value="\n".join(value_parts),
                         inline=False,
                     )
 
@@ -582,6 +627,10 @@ class Teams(commands.Cog, name="Teams"):
                 return
 
             filtered_teams = all_teams
+
+            # Filter by active status
+            if not include_disbanded:
+                filtered_teams = [t for t in filtered_teams if t.is_active]
 
             # Apply league filter
             if league:
@@ -661,10 +710,15 @@ class Teams(commands.Cog, name="Teams"):
                         league_names.append(lg.name)
 
                 league_info = f"Leagues: {', '.join(league_names)}" if league_names else "No leagues"
+                status_indicator = "🚫 **DISBANDED**" if not team.is_active else ""
+
+                value_parts = [f"Owner: {owner_name}", f"Members: {member_count}", league_info, f"ID: {team.id}"]
+                if status_indicator:
+                    value_parts.insert(0, status_indicator)
 
                 embed.add_field(
                     name=f"{team.name} [{team.tag}]",
-                    value=f"Owner: {owner_name}\nMembers: {member_count}\n{league_info}\nID: {team.id}",
+                    value="\n".join(value_parts),
                     inline=False,
                 )
 
@@ -913,6 +967,14 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ Only the team owner or captains can invite members.")
                 return
 
+            # Check if team is disbanded
+            if not team_obj.is_active:
+                await context.send(
+                    f"❌ Team **{team_obj.name}** [{team_obj.tag}] is disbanded and cannot accept new members. "
+                    "Use `/team reenable` to re-enable it first."
+                )
+                return
+
             # Get or create the invited user
             invited_user = User.get_by_discord_id(self.bot.database, str(user.id))
             if not invited_user:
@@ -1021,6 +1083,13 @@ class Teams(commands.Cog, name="Teams"):
             # Check if requester is the team captain, owner, or admin
             if not await self.bot.is_owner_or_admin_or_captain(context, team_obj, requester.id):
                 await context.send("❌ Only the team owner or captains can edit team details.")
+                return
+
+            # Check if team is disbanded
+            if not team_obj.is_active:
+                await context.send(
+                    f"❌ Team **{team_obj.name}** [{team_obj.tag}] is disbanded and cannot be edited. Use `/team reenable` to re-enable it first."
+                )
                 return
 
             # Check if at least one parameter is provided
@@ -1199,6 +1268,14 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ Only the team owner or captains can remove members.")
                 return
 
+            # Check if team is disbanded
+            if not team_obj.is_active:
+                await context.send(
+                    f"❌ Team **{team_obj.name}** [{team_obj.tag}] is disbanded and cannot have members removed. "
+                    "Use `/team reenable` to re-enable it first."
+                )
+                return
+
             # Get the user to remove from database
             target_user = User.get_by_discord_id(self.bot.database, str(user.id))
             if not target_user:
@@ -1319,6 +1396,14 @@ class Teams(commands.Cog, name="Teams"):
                 await context.send("❌ Only the team owner can transfer ownership.")
                 return
 
+            # Check if team is disbanded
+            if not team_obj.is_active:
+                await context.send(
+                    f"❌ Team **{team_obj.name}** [{team_obj.tag}] is disbanded and ownership cannot be transferred. "
+                    "Use `/team reenable` to re-enable it first."
+                )
+                return
+
             # Get the new owner from database
             new_owner = User.get_by_discord_id(self.bot.database, str(user.id))
             if not new_owner:
@@ -1357,6 +1442,187 @@ class Teams(commands.Cog, name="Teams"):
         except Exception as e:
             self.bot.logger.error("Error initiating ownership transfer: %s", e)
             await context.send(f"❌ An error occurred while initiating the ownership transfer: {e}")
+
+    @team.command(name="disband", description="Disband a team and make it inactive")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_disband(self, context: Context, team: str) -> None:
+        """
+        Disband a team, making it inactive.
+
+        Parameters
+        ----------
+        context : Context
+            The command context.
+        team : str
+            The team to disband.
+
+        Notes
+        -----
+        - Only the team owner or bot owner/admin can disband a team
+        - Disbanded teams cannot be modified except to be re-enabled
+        - Team members cannot join disbanded teams
+        - Disbanded teams cannot join leagues or issue challenges
+        - Team members can still leave a disbanded team
+        - The team record is not deleted from the database
+        """
+        await context.defer()
+
+        try:
+            server_id = str(context.guild.id) if context.guild else None
+            if not server_id:
+                await context.send("❌ This command can only be used in a server.")
+                return
+
+            # Get the requesting user
+            requester = User.get_by_discord_id(self.bot.database, str(context.author.id))
+            if not requester:
+                await context.send("❌ You are not registered in the database. Create a team first.")
+                return
+
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
+
+            # Get team by ID
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+            if not team_obj:
+                await context.send(f"❌ No team found with ID {team_id}.")
+                return
+
+            # Verify team is in this server
+            if team_obj.discord_server != server_id:
+                await context.send(f"❌ Team with ID {team_id} does not exist in this server.")
+                return
+
+            # Check if requester is the team owner, bot owner, or admin
+            if not await self.bot.is_owner_or_admin_or_captain(context, team_obj, requester.id):
+                await context.send("❌ Only the team owner (or bot owner/admin) can disband the team.")
+                return
+
+            # Check if team is already disbanded
+            if not team_obj.is_active:
+                await context.send(f"❌ Team **{team_obj.name}** [{team_obj.tag}] is already disbanded.")
+                return
+
+            # Disband the team
+            object.__setattr__(team_obj, "is_active", False)
+            object.__setattr__(team_obj, "updated_by", requester.id)
+            object.__setattr__(team_obj, "updated_at", datetime.now())
+            team_obj.save(self.bot.database)
+
+            # Create success embed
+            embed = discord.Embed(
+                title="✅ Team Disbanded",
+                description=f"Successfully disbanded team **{team_obj.name}** [{team_obj.tag}].",
+                colour=discord.Colour.green(),
+            )
+
+            embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
+            embed.add_field(name="Disbanded By", value=context.author.mention, inline=True)
+            embed.add_field(
+                name="Note",
+                value="The team can be re-enabled using `/team reenable`. Members can still leave the team.",
+                inline=False,
+            )
+            embed.set_footer(text=f"Disbanded by {context.author.name}")
+
+            await context.send(embed=embed)
+
+        except Exception as e:
+            self.bot.logger.error("Error disbanding team: %s", e)
+            await context.send(f"❌ An error occurred while disbanding the team: {e}")
+
+    @team.command(name="reenable", description="Re-enable a disbanded team (owner/admin only)")
+    @app_commands.autocomplete(team=team_autocomplete)
+    async def team_reenable(self, context: Context, team: str) -> None:
+        """
+        Re-enable a disbanded team, making it active again.
+
+        Parameters
+        ----------
+        context : Context
+            The command context.
+        team : str
+            The team to re-enable.
+
+        Notes
+        -----
+        - Only the team owner or bot owner/admin can re-enable a team
+        - Once re-enabled, the team can be modified normally
+        - Team members can join and the team can participate in leagues and challenges
+        """
+        await context.defer()
+
+        try:
+            server_id = str(context.guild.id) if context.guild else None
+            if not server_id:
+                await context.send("❌ This command can only be used in a server.")
+                return
+
+            # Get the requesting user
+            requester = User.get_by_discord_id(self.bot.database, str(context.author.id))
+            if not requester:
+                await context.send("❌ You are not registered in the database. Create a team first.")
+                return
+
+            # Parse team ID from autocomplete value
+            try:
+                team_id = int(team)
+            except ValueError:
+                await context.send("❌ Invalid team selection.")
+                return
+
+            # Get team by ID
+            team_obj = Team.get_by_id(self.bot.database, team_id)
+            if not team_obj:
+                await context.send(f"❌ No team found with ID {team_id}.")
+                return
+
+            # Verify team is in this server
+            if team_obj.discord_server != server_id:
+                await context.send(f"❌ Team with ID {team_id} does not exist in this server.")
+                return
+
+            # Check if requester is the team owner, bot owner, or admin
+            if not await self.bot.is_owner_or_admin_or_captain(context, team_obj, requester.id):
+                await context.send("❌ Only the team owner (or bot owner/admin) can re-enable the team.")
+                return
+
+            # Check if team is already active
+            if team_obj.is_active:
+                await context.send(f"❌ Team **{team_obj.name}** [{team_obj.tag}] is already active.")
+                return
+
+            # Re-enable the team
+            object.__setattr__(team_obj, "is_active", True)
+            object.__setattr__(team_obj, "updated_by", requester.id)
+            object.__setattr__(team_obj, "updated_at", datetime.now())
+            team_obj.save(self.bot.database)
+
+            # Create success embed
+            embed = discord.Embed(
+                title="✅ Team Re-enabled",
+                description=f"Successfully re-enabled team **{team_obj.name}** [{team_obj.tag}].",
+                colour=discord.Colour.green(),
+            )
+
+            embed.add_field(name="Team ID", value=str(team_obj.id), inline=True)
+            embed.add_field(name="Re-enabled By", value=context.author.mention, inline=True)
+            embed.add_field(
+                name="Note",
+                value="The team is now active and can be modified, accept members, and participate in leagues and challenges.",
+                inline=False,
+            )
+            embed.set_footer(text=f"Re-enabled by {context.author.name}")
+
+            await context.send(embed=embed)
+
+        except Exception as e:
+            self.bot.logger.error("Error re-enabling team: %s", e)
+            await context.send(f"❌ An error occurred while re-enabling the team: {e}")
 
 
 async def setup(bot: DiscordBot) -> None:

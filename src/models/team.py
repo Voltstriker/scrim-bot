@@ -42,6 +42,12 @@ class Team:
         Foreign key to the user who created the team.
     discord_server : str
         Discord server ID where the team is registered.
+    is_active : bool
+        Whether the team is currently active (not disbanded).
+    updated_by : int, optional
+        Foreign key to the user who last updated the team.
+    updated_at : datetime, optional
+        When the team was last updated.
     """
 
     id: int
@@ -51,6 +57,9 @@ class Team:
     created_at: datetime
     created_by: int
     discord_server: str
+    is_active: bool = True
+    updated_by: Optional[int] = None
+    updated_at: Optional[datetime] = None
 
     @classmethod
     def from_row(cls, row) -> "Team":
@@ -75,6 +84,9 @@ class Team:
             created_at=row["created_at"],
             created_by=row["created_by"],
             discord_server=row["discord_server"],
+            is_active=bool(row["is_active"]) if "is_active" in row.keys() else True,
+            updated_by=row["updated_by"] if "updated_by" in row.keys() and row["updated_by"] else None,
+            updated_at=row["updated_at"] if "updated_at" in row.keys() and row["updated_at"] else None,
         )
 
     def save(self, db: Database) -> int:
@@ -107,6 +119,9 @@ class Team:
                     "created_at": self.created_at,
                     "created_by": self.created_by,
                     "discord_server": self.discord_server,
+                    "is_active": int(self.is_active),
+                    "updated_by": self.updated_by,
+                    "updated_at": self.updated_at,
                 },
             )
             if team_id:
@@ -116,7 +131,15 @@ class Team:
         # Update existing team
         db.update(
             "teams",
-            {"name": self.name, "tag": self.tag, "owner_id": self.owner_id, "discord_server": self.discord_server},
+            {
+                "name": self.name,
+                "tag": self.tag,
+                "owner_id": self.owner_id,
+                "discord_server": self.discord_server,
+                "is_active": int(self.is_active),
+                "updated_by": self.updated_by,
+                "updated_at": self.updated_at,
+            },
             "id = ?",
             (self.id,),
         )
@@ -176,6 +199,31 @@ class Team:
             List of teams in the server.
         """
         rows = db.select("teams", where="discord_server = ?", parameters=(discord_server,), order_by="name")
+        return [cls.from_row(row) for row in rows]
+
+    @classmethod
+    def get_by_server_active(cls, db: Database, discord_server: str, active_only: bool = True) -> list["Team"]:
+        """
+        Retrieve teams in a Discord server, optionally filtering by active status.
+
+        Parameters
+        ----------
+        db : Database
+            Database instance to use for the operation.
+        discord_server : str
+            Discord server ID.
+        active_only : bool, optional
+            If True, return only active teams. If False, return all teams.
+
+        Returns
+        -------
+        list[Team]
+            List of teams in the server matching the filter criteria.
+        """
+        if active_only:
+            rows = db.select("teams", where="discord_server = ? AND is_active = 1", parameters=(discord_server,), order_by="name")
+        else:
+            rows = db.select("teams", where="discord_server = ?", parameters=(discord_server,), order_by="name")
         return [cls.from_row(row) for row in rows]
 
 

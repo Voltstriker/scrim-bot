@@ -53,9 +53,12 @@ Table teams {
   name text [not null, note: 'Full team name']
   tag text [not null, note: 'Team shorthand/tag']
   owner_id integer [not null, ref: > users.id, note: 'Reference to users table (team owner)']
+  is_active integer [default: 1, note: 'Is team active (0=disbanded, 1=active)']
+  discord_server text [not null, note: 'Discord server ID (snowflake)']
   created_at timestamp [default: `CURRENT_TIMESTAMP`, note: 'Team creation timestamp']
   created_by integer [not null, ref: > users.id, note: 'Reference to users table (creator)']
-  discord_server text [not null, note: 'Discord server ID (snowflake)']
+  updated_by integer [ref: > users.id, note: 'Reference to users table (last updater)']
+  updated_at timestamp [note: 'Last update timestamp']
 }
 
 Table leagues {

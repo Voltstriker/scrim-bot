@@ -79,16 +79,18 @@ The following commands are available in the bot:
 
 ### Team Management Commands
 
-| Command         | Scoped User  | Description                                                                         |
-| --------------- | ------------ | ----------------------------------------------------------------------------------- |
-| `/teams`        | All Users    | List teams on the server with optional filters, or list your teams when used in DMs |
-| `/team create`  | All Users    | Create a new team with the specified name and tag                                   |
-| `/team members` | All Users    | List all members of a team                                                          |
-| `/team invite`  | Team Captain | Invite a user to join your team                                                     |
-| `/team edit`    | Team Captain | Edit your team's name or tag                                                        |
-| `/team leave`   | All Users    | Leave a team the user is a member of                                                |
-| `/team remove`  | Team Captain | Remove a member from your team by team ID                                           |
-| `/team owner`   | Team Owner   | Transfer ownership to another team member by team ID                                |
+| Command          | Scoped User  | Description                                                                         |
+| ---------------- | ------------ | ----------------------------------------------------------------------------------- |
+| `/teams`         | All Users    | List teams on the server with optional filters, or list your teams when used in DMs |
+| `/team create`   | All Users    | Create a new team with the specified name and tag                                   |
+| `/team members`  | All Users    | List all members of a team                                                          |
+| `/team invite`   | Team Captain | Invite a user to join your team                                                     |
+| `/team edit`     | Team Captain | Edit your team's name or tag                                                        |
+| `/team leave`    | All Users    | Leave a team the user is a member of                                                |
+| `/team remove`   | Team Captain | Remove a member from your team by team ID                                           |
+| `/team owner`    | Team Owner   | Transfer ownership to another team member by team ID                                |
+| `/team disband`  | Team Owner   | Disband a team, making it inactive                                                  |
+| `/team reenable` | Team Owner   | Re-enable a disbanded team                                                          |
 
 ## Issues or Questions
 

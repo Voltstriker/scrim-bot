@@ -618,11 +618,15 @@ class Database:
                 name TEXT NOT NULL,
                 tag TEXT NOT NULL,
                 owner_id INTEGER NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                discord_server TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 created_by INTEGER NOT NULL,
-                discord_server TEXT NOT NULL,
+                updated_at TIMESTAMP,
+                updated_by INTEGER,
                 FOREIGN KEY (owner_id) REFERENCES users(id),
-                FOREIGN KEY (created_by) REFERENCES users(id)
+                FOREIGN KEY (created_by) REFERENCES users(id),
+                FOREIGN KEY (updated_by) REFERENCES users(id)
             )
             """)
 
